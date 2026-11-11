@@ -89,6 +89,11 @@ webui/                   React + Vite source for the web UI
   use the iOS Files app or LocalSend for original HEIC + MOV.
 - The vault is hidden in-app but not encrypted yet; full vault encryption is planned.
 - Debug builds install as `com.luma.gallery.debug` and can coexist with release builds.
+- **Android developer verification (2027)** — Google now requires apps on certified devices
+  to come from a verified developer. Luma's package name and signing-key fingerprint are
+  documented in [`docs/developer-verification.md`](docs/developer-verification.md) for a
+  one-time registration; until then the APK still installs via ADB or Android's advanced
+  flow. This does not affect the GPL-3.0 license or the source code.
 
 ## License
 
