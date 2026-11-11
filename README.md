@@ -1,5 +1,7 @@
 # Luma — Photos & Videos
 
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+
 A fast, native Android gallery built with Kotlin and Jetpack Compose. Luma indexes your
 photos and videos with MediaStore, pairs Apple Live Photos automatically, and includes a
 LAN web player for your TV, PC or iPhone.
@@ -87,3 +89,12 @@ webui/                   React + Vite source for the web UI
   use the iOS Files app or LocalSend for original HEIC + MOV.
 - The vault is hidden in-app but not encrypted yet; full vault encryption is planned.
 - Debug builds install as `com.luma.gallery.debug` and can coexist with release builds.
+
+## License
+
+Luma is free software: you can redistribute it and/or modify it under the terms of the
+**GNU General Public License v3.0**. See [LICENSE](LICENSE) for the full text.
+
+If you distribute a modified version — including a rebuilt APK — you must make the
+corresponding source code available under the GPL-3.0 as well.
+
