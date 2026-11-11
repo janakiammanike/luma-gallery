@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tagline">మీ జ్ఞాపకాలు, అందంగా అమర్చబడ్డాయి</string>
+
+    <string name="tab_photos">ఫోటోలు</string>
+    <string name="tab_albums">ఆల్బమ్‌లు</string>
+    <string name="tab_search">వెతుకు</string>
+    <string name="tab_settings">సెట్టింగ్‌లు</string>
+
+    <string name="permission_title">మీ ఫోటోలను చూడటానికి అనుమతి ఇవ్వండి</string>
+    <string name="permission_body">మీ పరికరంలో ఉన్న ఫోటోలు, వీడియోలను చదివి Luma గ్యాలరీని తయారు చేస్తుంది. ఏదీ అప్‌లోడ్ చేయబడదు.</string>
+    <string name="permission_cta">అనుమతి ఇవ్వండి</string>
+    <string name="permission_partial">పరిమిత అనుమతి ఇచ్చారు — మీరు ఎంచుకున్న ఐటెమ్‌లు మాత్రమే కనిపిస్తాయి.</string>
+    <string name="permission_settings">సెట్టింగ్‌లు తెరవండి</string>
+    <string name="permission_denied">గ్యాలరీ చూపించడానికి అనుమతి అవసరం.</string>
+
+    <string name="photos_count">%1$d ఐటెమ్‌లు</string>
+    <string name="albums_smart">స్మార్ట్ ఆల్బమ్‌లు</string>
+    <string name="albums_folders">ఫోల్డర్‌లు</string>
+    <string name="album_all">అన్ని మీడియా</string>
+
+    <string name="search_hint">మీ గ్యాలరీలో వెతకండి</string>
+    <string name="search_empty">మీ వెతుకుడుకి ఏమీ దొరకలేదు</string>
+    <string name="filter_all">అన్నీ</string>
+    <string name="filter_images">చిత్రాలు</string>
+    <string name="filter_videos">వీడియోలు</string>
+
+    <string name="empty_gallery">ఇంకా ఫోటోలు లేదా వీడియోలు లేవు</string>
+    <string name="empty_gallery_hint">కొత్త మీడియా ఇక్కడ ఆటోమేటిక్‌గా కనిపిస్తుంది</string>
+    <string name="empty_album">ఈ ఆల్బమ్ ఖాళీగా ఉంది</string>
+    <string name="empty_album_hint">నింపడానికి ఫోటో లేదా వీడియో తెరిచి, ఆల్బమ్‌కు జోడించు ఎంచుకోండి</string>
+    <string name="loading">మీ గ్యాలరీని స్కాన్ చేస్తోంది…</string>
+
+    <string name="action_share">పంచుకోండి</string>
+    <string name="action_delete">తొలగించండి</string>
+    <string name="action_info">వివరాలు</string>
+    <string name="action_favourite">ఇష్టమైనవి</string>
+    <string name="action_unfavourite">తీసివేయి</string>
+    <string name="action_close">మూసివేయండి</string>
+    <string name="action_select_all">అన్నీ ఎంచుకోండి</string>
+    <string name="action_cancel">రద్దు</string>
+    <string name="action_refresh">రిఫ్రెష్</string>
+
+    <string name="selected_count">%1$d ఎంచుకున్నారు</string>
+    <string name="delete_title">%1$d ఐటెమ్‌లను తొలగించాలా?</string>
+    <string name="delete_body">ఐటెమ్‌లు Luma ట్రాష్‌కు వెళ్తాయి మరియు 30 రోజులు అక్కడ ఉంటాయి. మీరు ఎప్పుడైనా పునరుద్ధరించవచ్చు.</string>
+    <string name="delete_confirm">తొలగించండి</string>
+
+    <string name="info_title">వివరాలు</string>
+    <string name="info_name">పేరు</string>
+    <string name="info_path">ఫోల్డర్</string>
+    <string name="info_size">పరిమాణం</string>
+    <string name="info_date">తేదీ</string>
+    <string name="info_resolution">రిజల్యూషన్</string>
+    <string name="info_type">రకం</string>
+    <string name="info_duration">నిడివి</string>
+    <string name="info_album">ఆల్బమ్</string>
+
+    <string name="settings_title">సెట్టింగ్‌లు</string>
+    <string name="settings_appearance">రూపం</string>
+    <string name="settings_accent">యాస రంగు</string>
+    <string name="settings_accent_custom">అనుకూల రంగు</string>
+    <string name="settings_accent_hue">వర్ణం</string>
+    <string name="settings_accent_saturation">సాంద్రత</string>
+    <string name="settings_grid">గ్రిడ్ సాంద్రత</string>
+    <string name="settings_language">భాష</string>
+    <string name="settings_language_system">సిస్టమ్ డిఫాల్ట్</string>
+    <string name="settings_all_files">అన్ని ఫైల్‌ల యాక్సెస్</string>
+    <string name="settings_all_files_desc">దాచిన మరియు ఇండెక్స్ చేయని ఫోల్డర్‌లను చూపించు</string>
+    <string name="settings_about">గురించి</string>
+    <string name="settings_version">వెర్షన్</string>
+    <string name="settings_theme_dark">డార్క్</string>
+    <string name="settings_theme_light">లైట్</string>
+    <string name="settings_theme_system">సిస్టమ్</string>
+
+    <string name="live_badge">లైవ్</string>
+    <string name="live_play">లైవ్</string>
+    <string name="info_live">లైవ్ ఫోటో</string>
+
+    <string name="settings_web">వెబ్ &amp; టీవీ</string>
+    <string name="settings_web_desc">మీ Wi-Fiలో ఏ బ్రౌజర్ నుంచైనా బ్రౌజ్, డౌన్‌లోడ్, అప్‌లోడ్ చేయండి</string>
+    <string name="web_on">వెబ్ యాక్సెస్ ఆన్‌లో ఉంది</string>
+    <string name="web_off">వెబ్ యాక్సెస్ ఆఫ్‌లో ఉంది</string>
+    <string name="web_address">చిరునామా</string>
+    <string name="web_pin">యాక్సెస్ పిన్</string>
+    <string name="web_new_pin">కొత్త పిన్</string>
+    <string name="web_open">బ్రౌజర్‌లో తెరవండి</string>
+    <string name="web_wifi_hint">ఫోన్, టీవీ / PC ఒకే Wi-Fiకి కనెక్ట్ చేయండి.</string>
+    <string name="web_pin_hint">టీవీ, PC లేదా iPhone బ్రౌజర్‌లో ఈ పిన్ నమోదు చేయండి.</string>
+    <string name="web_starting">ప్రారంభమవుతోంది…</string>
+    <string name="web_failed">సర్వర్ ప్రారంభం కాలేదు</string>
+    <string name="web_stop">ఆఫ్ చేయండి</string>
+    <string name="web_scan">తెరవడానికి స్కాన్ చేయండి</string>
+    <string name="web_open_hint">మీ టీవీ, PC లేదా iPhoneలో ఈ చిరునామా తెరవండి</string>
+
+    <string name="album_camera">కెమెరా</string>
+    <string name="album_screenshots">స్క్రీన్‌షాట్‌లు</string>
+    <string name="album_downloads">డౌన్‌లోడ్‌లు</string>
+    <string name="album_whatsapp">వాట్సాప్</string>
+    <string name="album_instagram">ఇన్‌స్టాగ్రామ్</string>
+    <string name="album_telegram">టెలిగ్రామ్</string>
+    <string name="album_facebook">ఫేస్‌బుక్</string>
+    <string name="album_screen_recordings">స్క్రీన్ రికార్డింగ్‌లు</string>
+    <string name="album_videos">వీడియోలు</string>
+    <string name="album_favourites">ఇష్టమైనవి</string>
+
+    <string name="date_today">ఈరోజు</string>
+    <string name="date_yesterday">నిన్న</string>
+
+    <string name="albums_mine">నా ఆల్బమ్‌లు</string>
+    <string name="album_new">కొత్త ఆల్బమ్</string>
+    <string name="album_create">ఆల్బమ్ సృష్టించండి</string>
+    <string name="album_rename">ఆల్బమ్ పేరు మార్చండి</string>
+    <string name="album_delete">ఆల్బమ్ తొలగించండి</string>
+    <string name="album_delete_body">ఆల్బమ్ తొలగించబడుతుంది. మీ ఫోటోలు, వీడియోలు పరికరంలోనే ఉంటాయి.</string>
+    <string name="album_name_hint">ఆల్బమ్ పేరు</string>
+    <string name="album_options">ఆల్బమ్ ఎంపికలు</string>
+    <string name="album_added">ఆల్బమ్‌కు జోడించబడింది</string>
+    <string name="add_to_album">ఆల్బమ్‌కు జోడించండి</string>
+    <string name="action_create">సృష్టించండి</string>
+    <string name="action_save">సేవ్ చేయండి</string>
+    <string name="albums_recently_deleted">ఇటీవల తొలగించినవి</string>
+    <string name="trash_title">ట్రాష్</string>
+    <string name="trash_note">తొలగించినవి 30 రోజులు ఉంచబడతాయి</string>
+    <string name="trash_empty">ట్రాష్ ఖాళీగా ఉంది</string>
+    <string name="trash_empty_hint">మీరు తొలగించేవి 30 రోజులు ఇక్కడ ఉంటాయి.</string>
+    <string name="action_restore">పునరుద్ధరించండి</string>
+    <string name="action_delete_forever">శాశ్వతంగా తొలగించండి</string>
+    <string name="delete_forever_title">శాశ్వతంగా తొలగించాలా?</string>
+    <string name="delete_forever_body">ఈ ఐటెమ్‌లు పరికరం నుండి తొలగించబడతాయి, తిరిగి పొందలేరు.</string>
+    <string name="trash_moved">ట్రాష్‌కు తరలించబడింది</string>
+    <string name="trash_restored">పునరుద్ధరించబడింది</string>
+    <string name="trash_purged">శాశ్వతంగా తొలగించబడింది</string>
+
+    <string name="vault_section">ప్రైవేట్</string>
+    <string name="vault_title">ప్రైవేట్ వాల్ట్</string>
+    <string name="vault_note">మీ స్క్రీన్ లాక్‌తో రక్షించబడింది</string>
+    <string name="vault_locked_title">వాల్ట్ లాక్ చేయబడింది</string>
+    <string name="vault_locked_body">మీరు ఇక్కడ దాచిన ఫోటోలు, వీడియోలను చూడటానికి వేలిముద్ర లేదా స్క్రీన్ లాక్‌తో అన్‌లాక్ చేయండి.</string>
+    <string name="vault_unlock">అన్‌లాక్ చేయండి</string>
+    <string name="vault_unlock_title">మీ వాల్ట్‌ను అన్‌లాక్ చేయండి</string>
+    <string name="vault_unlock_body">కొనసాగించడానికి మీరే అని నిర్ధారించండి</string>
+    <string name="vault_unavailable_title">వాల్ట్ అందుబాటులో లేదు</string>
+    <string name="vault_unavailable_body">ప్రైవేట్ వాల్ట్ ఉపయోగించడానికి పరికర సెట్టింగ్‌లలో వేలిముద్ర లేదా స్క్రీన్ లాక్ సెట్ చేయండి.</string>
+    <string name="vault_empty">మీ వాల్ట్ ఖాళీగా ఉంది</string>
+    <string name="vault_empty_hint">ఫోటోలు, వీడియోలను గ్యాలరీ నుండి దాచడానికి ఇక్కడికి తరలించండి.</string>
+    <string name="vault_added">వాల్ట్‌కు తరలించబడింది</string>
+    <string name="vault_restored">తిరిగి గ్యాలరీకి తరలించబడింది</string>
+    <string name="add_to_vault">ప్రైవేట్ వాల్ట్</string>
+    <string name="vault_move_title">%1$d ఐటెమ్‌లను వాల్ట్‌కు తరలించాలా?</string>
+    <string name="vault_move_body">అవి మీ గ్యాలరీ నుండి మాయమవుతాయి, అన్‌లాక్ చేసిన తర్వాత మాత్రమే ఇక్కడ తెరవగలరు.</string>
+    <string name="vault_move_confirm">వాల్ట్‌కు తరలించండి</string>
+
+    <string name="action_edit">సవరించు</string>
+
+    <string name="image_editor_title">ఫోటో సవరించు</string>
+    <string name="editor_tool_crop">కత్తిరించు</string>
+    <string name="editor_tool_rotate">తిప్పు</string>
+    <string name="editor_tool_filters">ఫిల్టర్లు</string>
+    <string name="editor_tool_adjust">సర్దుబాటు</string>
+    <string name="editor_ratio_free">ఫ్రీ</string>
+    <string name="editor_ratio_square">1:1</string>
+    <string name="editor_ratio_portrait">4:5</string>
+    <string name="editor_ratio_landscape">16:9</string>
+    <string name="editor_rotate_left">ఎడమవైపు తిప్పు</string>
+    <string name="editor_rotate_right">కుడివైపు తిప్పు</string>
+    <string name="editor_flip">ఫ్లిప్</string>
+    <string name="editor_reset">రీసెట్</string>
+    <string name="editor_brightness">ప్రకాశం</string>
+    <string name="editor_contrast">కాంట్రాస్ట్</string>
+    <string name="editor_saturation">సాచురేషన్</string>
+    <string name="editor_filter_original">అసలైనది</string>
+    <string name="editor_filter_warm">వెచ్చని</string>
+    <string name="editor_filter_cool">చల్లని</string>
+    <string name="editor_filter_mono">మోనో</string>
+    <string name="editor_filter_vivid">ప్రకాశవంతం</string>
+    <string name="editor_filter_fade">ఫేడ్</string>
+    <string name="editor_saved">కాపీని LumaEditsలో సేవ్ చేశారు</string>
+    <string name="editor_save_failed">సవరణను సేవ్ చేయలేకపోయాం</string>
+    <string name="editor_loading">ఫోటో సిద్ధమవుతోంది…</string>
+    <string name="editor_saving">కాపీ సేవ్ అవుతోంది…</string>
+
+    <string name="video_editor_title">వీడియో ట్రిమ్ చేయండి</string>
+    <string name="video_play">ప్లే చేయండి</string>
+    <string name="video_pause">పాజ్ చేయండి</string>
+    <string name="video_trim_hint">ఉంచాల్సిన భాగాన్ని ఎంచుకోడానికి హ్యాండిల్స్ లాగండి.</string>
+    <string name="video_trim_saved">ట్రిమ్ చేసిన కాపీ LumaEditsలో సేవ్ చేయబడింది</string>
+    <string name="video_trim_failed">ఈ వీడియోను ట్రిమ్ చేయలేకపోయాం</string>
+    <string name="video_error_title">ఈ వీడియోను ప్లే చేయలేము</string>
+    <string name="video_error_body">ఫైల్ దెబ్బతిని ఉండవచ్చు, లేదా ఈ పరికరం మద్దతు ఇవ్వని కోడెక్ ఉపయోగించి ఉండవచ్చు.</string>
+    <string name="video_retry">మళ్లీ ప్రయత్నించండి</string>
+
+    <string name="settings_connect">కనెక్ట్ అవ్వండి</string>
+    <string name="settings_github_title">GitHubలో ఫాలో అవ్వండి</string>
+    <string name="settings_github_handle">@janakiammanike</string>
+    <string name="settings_email_title">డెవలపర్కు ఈమెయిల్ చేయండి</string>
+    <string name="settings_email_value">janakiram25@yahoo.com</string>
+    <string name="settings_open">తెరవండి</string>
+    <string name="settings_link_failed">ఈ లింక్‌ను తెరవలేకపోయాం</string>
+</resources>

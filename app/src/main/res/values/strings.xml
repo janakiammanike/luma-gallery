@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Luma</string>
+    <string name="tagline">Your memories, beautifully arranged</string>
+
+    <string name="tab_photos">Photos</string>
+    <string name="tab_albums">Albums</string>
+    <string name="tab_search">Search</string>
+    <string name="tab_settings">Settings</string>
+
+    <string name="permission_title">Let Luma see your photos</string>
+    <string name="permission_body">Luma reads the photos and videos already on your device to build your gallery. Nothing is uploaded, ever.</string>
+    <string name="permission_cta">Allow access</string>
+    <string name="permission_partial">Limited access granted — only the items you selected are visible.</string>
+    <string name="permission_settings">Open settings</string>
+    <string name="permission_denied">Access is needed to show your gallery.</string>
+
+    <string name="photos_count">%1$d items</string>
+    <string name="albums_smart">Smart albums</string>
+    <string name="albums_folders">Folders</string>
+    <string name="album_all">All media</string>
+
+    <string name="search_hint">Search your gallery</string>
+    <string name="search_empty">Nothing matched your search</string>
+    <string name="filter_all">All</string>
+    <string name="filter_images">Images</string>
+    <string name="filter_videos">Videos</string>
+
+    <string name="empty_gallery">No photos or videos yet</string>
+    <string name="empty_gallery_hint">New media will appear here automatically</string>
+    <string name="empty_album">This album is empty</string>
+    <string name="empty_album_hint">Open a photo or video and choose Add to album to fill it</string>
+    <string name="loading">Scanning your gallery…</string>
+
+    <string name="action_share">Share</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_info">Details</string>
+    <string name="action_favourite">Favourite</string>
+    <string name="action_unfavourite">Unfavourite</string>
+    <string name="action_close">Close</string>
+    <string name="action_select_all">Select all</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_refresh">Refresh</string>
+
+    <string name="selected_count">%1$d selected</string>
+    <string name="delete_title">Delete %1$d item(s)?</string>
+    <string name="delete_body">Items move to Luma\u2019s trash and stay there for 30 days. You can restore them at any time.</string>
+    <string name="delete_confirm">Delete</string>
+
+    <string name="info_title">Details</string>
+    <string name="info_name">Name</string>
+    <string name="info_path">Folder</string>
+    <string name="info_size">Size</string>
+    <string name="info_date">Date</string>
+    <string name="info_resolution">Resolution</string>
+    <string name="info_type">Type</string>
+    <string name="info_duration">Duration</string>
+    <string name="info_album">Album</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_accent">Accent colour</string>
+    <string name="settings_accent_custom">Custom colour</string>
+    <string name="settings_accent_hue">Hue</string>
+    <string name="settings_accent_saturation">Saturation</string>
+    <string name="settings_grid">Grid density</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_system">System default</string>
+    <string name="settings_all_files">All files access</string>
+    <string name="settings_all_files_desc">Show hidden and non-indexed folders</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_system">System</string>
+
+    <string name="live_badge">LIVE</string>
+    <string name="live_play">Live</string>
+    <string name="info_live">Live Photo</string>
+
+    <string name="settings_web">Web &amp; TV</string>
+    <string name="settings_web_desc">Browse, download and upload from any browser on your Wi-Fi</string>
+    <string name="web_on">Web access is on</string>
+    <string name="web_off">Web access is off</string>
+    <string name="web_address">Address</string>
+    <string name="web_pin">Access PIN</string>
+    <string name="web_new_pin">New PIN</string>
+    <string name="web_open">Open in browser</string>
+    <string name="web_wifi_hint">Connect the phone and your TV / PC to the same Wi-Fi network.</string>
+    <string name="web_pin_hint">Enter this PIN on the TV, PC or iPhone browser.</string>
+    <string name="web_starting">Starting…</string>
+    <string name="web_failed">Could not start the server</string>
+    <string name="web_stop">Turn off</string>
+    <string name="web_scan">Scan to open</string>
+    <string name="web_open_hint">Open this address on your TV, PC or iPhone</string>
+
+    <string name="album_camera">Camera</string>
+    <string name="album_screenshots">Screenshots</string>
+    <string name="album_downloads">Downloads</string>
+    <string name="album_whatsapp">WhatsApp</string>
+    <string name="album_instagram">Instagram</string>
+    <string name="album_telegram">Telegram</string>
+    <string name="album_facebook">Facebook</string>
+    <string name="album_screen_recordings">Screen recordings</string>
+    <string name="album_videos">Videos</string>
+    <string name="album_favourites">Favourites</string>
+
+    <string name="date_today">Today</string>
+    <string name="date_yesterday">Yesterday</string>
+
+    <string name="albums_mine">My albums</string>
+    <string name="album_new">New album</string>
+    <string name="album_create">Create album</string>
+    <string name="album_rename">Rename album</string>
+    <string name="album_delete">Delete album</string>
+    <string name="album_delete_body">The album is removed. Your photos and videos stay on the device.</string>
+    <string name="album_name_hint">Album name</string>
+    <string name="album_options">Album options</string>
+    <string name="album_added">Added to album</string>
+    <string name="add_to_album">Add to album</string>
+    <string name="action_create">Create</string>
+    <string name="action_save">Save</string>
+    <string name="albums_recently_deleted">Recently deleted</string>
+    <string name="trash_title">Trash</string>
+    <string name="trash_note">Deleted items are kept for 30 days</string>
+    <string name="trash_empty">Trash is empty</string>
+    <string name="trash_empty_hint">Items you delete will wait here for 30 days.</string>
+    <string name="action_restore">Restore</string>
+    <string name="action_delete_forever">Delete forever</string>
+    <string name="delete_forever_title">Delete permanently?</string>
+    <string name="delete_forever_body">These items will be removed from your device and can\u2019t be recovered.</string>
+    <string name="trash_moved">Moved to Trash</string>
+    <string name="trash_restored">Restored</string>
+    <string name="trash_purged">Deleted permanently</string>
+
+    <string name="vault_section">Private</string>
+    <string name="vault_title">Private vault</string>
+    <string name="vault_note">Protected by your screen lock</string>
+    <string name="vault_locked_title">Vault is locked</string>
+    <string name="vault_locked_body">Unlock with your fingerprint or screen lock to see the photos and videos you have hidden here.</string>
+    <string name="vault_unlock">Unlock</string>
+    <string name="vault_unlock_title">Unlock your vault</string>
+    <string name="vault_unlock_body">Confirm it\u2019s you to continue</string>
+    <string name="vault_unavailable_title">Vault unavailable</string>
+    <string name="vault_unavailable_body">Set up a fingerprint or a screen lock in your device settings to use the private vault.</string>
+    <string name="vault_empty">Your vault is empty</string>
+    <string name="vault_empty_hint">Move photos and videos here to keep them out of your gallery.</string>
+    <string name="vault_added">Moved to vault</string>
+    <string name="vault_restored">Moved back to gallery</string>
+    <string name="add_to_vault">Private vault</string>
+    <string name="vault_move_title">Move %1$d item(s) to the vault?</string>
+    <string name="vault_move_body">They will disappear from your gallery and can only be opened here after unlocking.</string>
+    <string name="vault_move_confirm">Move to vault</string>
+
+    <string name="action_edit">Edit</string>
+
+    <string name="image_editor_title">Edit photo</string>
+    <string name="editor_tool_crop">Crop</string>
+    <string name="editor_tool_rotate">Rotate</string>
+    <string name="editor_tool_filters">Filters</string>
+    <string name="editor_tool_adjust">Adjust</string>
+    <string name="editor_ratio_free">Free</string>
+    <string name="editor_ratio_square">1:1</string>
+    <string name="editor_ratio_portrait">4:5</string>
+    <string name="editor_ratio_landscape">16:9</string>
+    <string name="editor_rotate_left">Rotate left</string>
+    <string name="editor_rotate_right">Rotate right</string>
+    <string name="editor_flip">Flip</string>
+    <string name="editor_reset">Reset</string>
+    <string name="editor_brightness">Brightness</string>
+    <string name="editor_contrast">Contrast</string>
+    <string name="editor_saturation">Saturation</string>
+    <string name="editor_filter_original">Original</string>
+    <string name="editor_filter_warm">Warm</string>
+    <string name="editor_filter_cool">Cool</string>
+    <string name="editor_filter_mono">Mono</string>
+    <string name="editor_filter_vivid">Vivid</string>
+    <string name="editor_filter_fade">Fade</string>
+    <string name="editor_saved">Saved a copy to LumaEdits</string>
+    <string name="editor_save_failed">Couldn\u2019t save the edit</string>
+    <string name="editor_loading">Preparing photo…</string>
+    <string name="editor_saving">Saving copy…</string>
+
+    <string name="video_editor_title">Trim video</string>
+    <string name="video_play">Play</string>
+    <string name="video_pause">Pause</string>
+    <string name="video_trim_hint">Drag the handles to choose the part to keep.</string>
+    <string name="video_trim_saved">Trimmed copy saved to LumaEdits</string>
+    <string name="video_trim_failed">Couldn\u2019t trim this video</string>
+    <string name="video_error_title">Couldn\u2019t play this video</string>
+    <string name="video_error_body">The file may be damaged, or it may use a codec this device doesn\u2019t support.</string>
+    <string name="video_retry">Try again</string>
+
+    <string name="settings_connect">Connect</string>
+    <string name="settings_github_title">Follow on GitHub</string>
+    <string name="settings_github_handle">@janakiammanike</string>
+    <string name="settings_email_title">Email the developer</string>
+    <string name="settings_email_value">janakiram25@yahoo.com</string>
+    <string name="settings_open">Open</string>
+    <string name="settings_link_failed">Couldn\u2019t open this link</string>
+</resources>
