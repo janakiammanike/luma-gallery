@@ -197,4 +197,6 @@
     <string name="settings_email_value">janakiram25@yahoo.com</string>
     <string name="settings_open">తెరవండి</string>
     <string name="settings_link_failed">ఈ లింక్‌ను తెరవలేకపోయాం</string>
+    <string name="settings_license">లైసెన్స్</string>
+    <string name="settings_license_value">GPL-3.0 · ఓపెన్ సోర్స్</string>
 </resources>

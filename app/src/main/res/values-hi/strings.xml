@@ -197,4 +197,6 @@
     <string name="settings_email_value">janakiram25@yahoo.com</string>
     <string name="settings_open">खोलें</string>
     <string name="settings_link_failed">यह लिंक नहीं खुल सका</string>
+    <string name="settings_license">लाइसेंस</string>
+    <string name="settings_license_value">GPL-3.0 · ओपन सोर्स</string>
 </resources>

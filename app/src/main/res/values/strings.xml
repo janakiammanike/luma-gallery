@@ -198,4 +198,6 @@
     <string name="settings_email_value">janakiram25@yahoo.com</string>
     <string name="settings_open">Open</string>
     <string name="settings_link_failed">Couldn\u2019t open this link</string>
+    <string name="settings_license">License</string>
+    <string name="settings_license_value">GPL-3.0 · Open source</string>
 </resources>

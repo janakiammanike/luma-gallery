@@ -314,6 +314,27 @@ fun SettingsScreen(viewModel: GalleryViewModel) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = palette.muted
                 )
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { openLink(context, LICENSE_URL) }
+                        .padding(vertical = 6.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_license),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = palette.muted,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_license_value),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
 
@@ -356,6 +377,7 @@ fun SettingsScreen(viewModel: GalleryViewModel) {
 private const val GITHUB_URL = "https://github.com/janakiammanike"
 private const val GITHUB_HANDLE = "@janakiammanike"
 private const val CONTACT_EMAIL = "janakiram25@yahoo.com"
+private const val LICENSE_URL = "https://github.com/janakiammanike/luma-gallery/blob/main/LICENSE"
 
 private fun openLink(context: Context, url: String) {
     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
