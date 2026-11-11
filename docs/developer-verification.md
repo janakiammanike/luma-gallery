@@ -85,6 +85,32 @@ new APK. Nothing needs to be added to the source tree until that step is request
 - Enable the **advanced flow** for unverified apps when prompted, or
 - Install from a store that already verifies Luma after registration.
 
+## Future distribution options (GitHub-only for now)
+
+Decision as of 1.1.1: Luma ships **only from GitHub Releases**. Nothing is submitted to any
+store. Recorded here so the research is not lost when we revisit it.
+
+F-Droid main-repo eligibility notes:
+
+- ✅ GPL-3.0, public repo, FOSS-only dependencies (Compose, Media3, Coil, NanoHTTPD, ZXing).
+- ⚠️ `app/src/main/assets/web` holds a **prebuilt** React bundle — the F-Droid recipe must run
+  `npm ci && npm run build` in `webui/` instead of using the committed assets.
+- ⚠️ No `fastlane/metadata/android/en-US/` yet — description, icon, phone screenshots and a
+  changelog per versionCode are required.
+- ⚠️ Policy asks for ~3 months of active development; revisit after that.
+- ⚠️ F-Droid signs with its own key unless the build is reproducible, so switching from the
+  GitHub APK to an F-Droid build would require a reinstall (vault/trash data lost) unless
+  reproducible builds are set up.
+- ℹ️ F-Droid is **not** a Google "participating store", so from 2027 installs through it still
+  depend on package registration; F-Droid integrates the Android Developer Console API to
+  register package names and keys on the developer's behalf.
+
+Lighter-weight alternatives if we want reach before that:
+
+1. **Obtainium** — zero work, users point it at the GitHub repo and get auto-updates.
+2. **IzzyOnDroid** — third-party repo, accepts the developer-signed APK, short review.
+3. **Self-hosted F-Droid repo** — `fdroidserver` + GitHub Pages, own key, no review.
+
 ## Release checklist reminder
 
 When a new version is published:
