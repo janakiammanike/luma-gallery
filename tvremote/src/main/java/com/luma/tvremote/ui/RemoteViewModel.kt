@@ -7,6 +7,7 @@ import com.luma.tvremote.data.TvStore
 import com.luma.tvremote.net.ConnectResult
 import com.luma.tvremote.net.LanScanner
 import com.luma.tvremote.net.TvApp
+import com.luma.tvremote.net.WakeOnLan
 import com.luma.tvremote.net.WebOsClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,10 +15,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+val DEFAULT_BUTTON_GROUPS = setOf("dpad", "system", "volume", "playback", "power")
+
 data class RemoteUiState(
     val hostInput: String = "",
     val savedHosts: Set<String> = emptySet(),
     val detectedHosts: List<String> = emptyList(),
+    val favorites: Set<String> = emptySet(),
+    val hostMacs: Map<String, String> = emptyMap(),
     val connectedHost: String? = null,
     val status: String = "Not connected",
     val isConnecting: Boolean = false,
@@ -25,7 +30,9 @@ data class RemoteUiState(
     val message: String? = null,
     val apps: List<TvApp> = emptyList(),
     val appQuery: String = "",
-    val keyboardText: String = ""
+    val keyboardText: String = "",
+    val visibleGroups: Set<String> = DEFAULT_BUTTON_GROUPS,
+    val customizing: Boolean = false
 )
 
 class RemoteViewModel(application: Application) : AndroidViewModel(application) {
@@ -35,7 +42,11 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     private val _ui = MutableStateFlow(
         RemoteUiState(
             hostInput = store.lastHost().orEmpty(),
-            savedHosts = store.savedHosts()
+            savedHosts = store.savedHosts(),
+            favorites = store.favorites(),
+            hostMacs = store.savedHosts().mapNotNull { host ->
+                store.macFor(host)?.takeIf { it.isNotBlank() }?.let { host to it }
+            }.toMap()
         )
     )
     val ui: StateFlow<RemoteUiState> = _ui.asStateFlow()
@@ -106,16 +117,22 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                     client = newClient
                     store.addHost(host)
                     store.setLastHost(host)
+                    val layout = store.buttonLayout(host) ?: DEFAULT_BUTTON_GROUPS
                     _ui.update {
                         it.copy(
                             connectedHost = host,
                             savedHosts = store.savedHosts(),
+                            hostMacs = it.hostMacs + (store.macFor(host)?.let { mac -> host to mac }?.let { mapOf(it) }
+                                ?: emptyMap()),
+                            visibleGroups = layout,
+                            customizing = false,
                             isConnecting = false,
                             status = "Connected · $host",
                             message = "Pairing saved. You're connected!"
                         )
                     }
                     loadApps()
+                    learnMac(host, newClient)
                 }
 
                 is ConnectResult.Failure -> {
@@ -128,6 +145,18 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                         )
                     }
                 }
+            }
+        }
+    }
+
+    private fun learnMac(host: String, active: WebOsClient) {
+        viewModelScope.launch {
+            try {
+                val mac = active.networkInfo()?.preferredMac() ?: return@launch
+                store.saveMac(host, mac)
+                _ui.update { it.copy(hostMacs = it.hostMacs + (host to mac)) }
+            } catch (_: Exception) {
+                // MAC discovery is best-effort; WoL simply won't be offered.
             }
         }
     }
@@ -150,10 +179,70 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         _ui.update {
             it.copy(
                 savedHosts = store.savedHosts(),
+                favorites = store.favorites(),
+                hostMacs = it.hostMacs - host,
                 detectedHosts = it.detectedHosts - host,
                 message = "Forgot $host"
             )
         }
+    }
+
+    fun toggleFavorite(host: String) {
+        store.toggleFavorite(host)
+        _ui.update { it.copy(favorites = store.favorites()) }
+    }
+
+    /** Wake a saved TV by MAC. Works even while the app is disconnected. */
+    fun wakeHost(host: String) {
+        val mac = store.macFor(host) ?: _ui.value.hostMacs[host]
+        if (mac.isNullOrBlank()) {
+            _ui.update { it.copy(message = "Connect to $host once to learn its MAC address") }
+            return
+        }
+        viewModelScope.launch {
+            try {
+                WakeOnLan.send(getApplication(), mac)
+                _ui.update { it.copy(message = "Wake-on-LAN packet sent to $host") }
+            } catch (e: Exception) {
+                _ui.update { it.copy(message = e.message ?: "Could not send wake packet") }
+            }
+        }
+    }
+
+    /** Software power-on when connected; falls back to WoL using the learned MAC. */
+    fun powerOn() {
+        val active = client
+        if (active != null && active.isConnected()) {
+            viewModelScope.launch {
+                try {
+                    active.powerOn()
+                    _ui.update { it.copy(message = "Power-on command sent to TV") }
+                } catch (e: Exception) {
+                    _ui.update { it.copy(message = "TV did not accept power-on: ${e.message ?: "failed"}") }
+                }
+            }
+        } else {
+            _ui.value.connectedHost?.let { wakeHost(it) }
+                ?: _ui.update { it.copy(message = "Connect to the TV first, or use Wake on a saved TV") }
+        }
+    }
+
+    fun toggleCustomizing() {
+        _ui.update { it.copy(customizing = !it.customizing) }
+    }
+
+    fun toggleGroup(id: String) {
+        val host = _ui.value.connectedHost ?: return
+        val current = _ui.value.visibleGroups
+        val next = if (id in current) current - id else current + id
+        store.saveButtonLayout(host, next)
+        _ui.update { it.copy(visibleGroups = next) }
+    }
+
+    fun resetLayout() {
+        val host = _ui.value.connectedHost ?: return
+        store.clearButtonLayout(host)
+        _ui.update { it.copy(visibleGroups = DEFAULT_BUTTON_GROUPS) }
     }
 
     fun reloadApps() = loadApps()
@@ -234,6 +323,21 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             try {
                 val message = client?.searchOnTv(query) ?: "Not connected"
+                _ui.update { it.copy(message = message) }
+            } catch (e: Exception) {
+                _ui.update { it.copy(message = e.message ?: "Search failed") }
+            }
+        }
+    }
+
+    fun appSearch(appId: String, query: String) {
+        if (query.isBlank()) {
+            _ui.update { it.copy(message = "Type a search term first") }
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val message = client?.searchInApp(appId, query) ?: "Not connected"
                 _ui.update { it.copy(message = message) }
             } catch (e: Exception) {
                 _ui.update { it.copy(message = e.message ?: "Search failed") }

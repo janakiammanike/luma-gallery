@@ -20,6 +20,15 @@ import javax.net.ssl.X509TrustManager
 
 data class TvApp(val id: String, val title: String, val type: String)
 
+/** MAC addresses reported by the TV, keyed by interface name (wired/wifi/p2p). */
+data class TvNetworkInfo(val macAddresses: Map<String, String>) {
+    /** Prefer the Ethernet MAC: that is usually the one visible in the LAN ARP table. */
+    fun preferredMac(): String? = macAddresses["wiredInfo"]
+        ?: macAddresses["wifiInfo"]
+        ?: macAddresses["p2pInfo"]
+        ?: macAddresses.values.firstOrNull()
+}
+
 sealed interface ConnectResult {
     data class Success(val clientKey: String) : ConnectResult
     data class Failure(val message: String) : ConnectResult
@@ -127,6 +136,23 @@ class WebOsClient(
 
     suspend fun powerOff() = sendOnly("system/turnOff")
 
+    /** Software power-on. Only works when the TV is in network standby. */
+    suspend fun powerOn() = request("system/turnOn")
+
+    suspend fun networkInfo(): TvNetworkInfo? = try {
+        val payload = request(ENDPOINT_NETWORK_INFO)
+        val macs = linkedMapOf<String, String>()
+        for (key in listOf("wiredInfo", "wifiInfo", "p2pInfo")) {
+            payload.optJSONObject(key)
+                ?.optString("macAddress")
+                ?.takeIf { it.isNotBlank() }
+                ?.let { macs[key] = it }
+        }
+        if (macs.isEmpty()) null else TvNetworkInfo(macs)
+    } catch (_: Exception) {
+        null
+    }
+
     suspend fun play() = request("media.controls/play")
 
     suspend fun pause() = request("media.controls/pause")
@@ -172,6 +198,42 @@ class WebOsClient(
             .takeIf { it.isNotBlank() }
     } catch (_: Exception) {
         null
+    }
+
+    /**
+     * Opens an app's own search UI with a deep link where supported.
+     * Returns an honest description of which path was attempted.
+     */
+    suspend fun searchInApp(appId: String, query: String): String {
+        if (query.isBlank()) return "Type something to search"
+        val encoded = java.net.URLEncoder.encode(query, "UTF-8")
+        val candidates = when {
+            appId.contains("youtube", ignoreCase = true) -> listOf(
+                "youtube://results?search_query=$encoded",
+                "youtube://search?q=$encoded"
+            )
+            appId.contains("netflix", ignoreCase = true) -> listOf(
+                "nflix://search?query=$encoded"
+            )
+            else -> emptyList()
+        }
+        for (uri in candidates) {
+            try {
+                request(
+                    "system.launcher/launch",
+                    mapOf("id" to appId, "params" to mapOf("uri" to uri))
+                )
+                return "Opened $appId search for “$query”"
+            } catch (_: Exception) {
+                // Try the next URI format.
+            }
+        }
+        return try {
+            launchApp(appId)
+            "Opened $appId. Use its search box, then the Keyboard tab to type “$query”."
+        } catch (e: Exception) {
+            "Could not open $appId: ${e.message ?: "launch failed"}"
+        }
     }
 
     /** Returns a short description of which search path the TV accepted. */
@@ -516,6 +578,7 @@ class WebOsClient(
         private const val PAIR_TIMEOUT_MS = 90_000L
         private const val REGISTER_ID = "register_0"
 
+        private const val ENDPOINT_NETWORK_INFO = "com.webos.service.connectionmanager/getinfo"
         private const val ENDPOINT_INPUT_SOCKET = "com.webos.service.networkinput/getPointerInputSocket"
         private const val ENDPOINT_REGISTER_KEYBOARD = "com.webos.service.ime/registerRemoteKeyboard"
         private const val ENDPOINT_INSERT_TEXT = "com.webos.service.ime/insertText"

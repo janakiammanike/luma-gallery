@@ -68,7 +68,9 @@ fun RemoteApp(vm: RemoteViewModel = viewModel()) {
                 onConnect = { vm.connect() },
                 onScan = vm::scan,
                 onPickHost = { vm.connect(it) },
-                onForget = vm::forgetHost
+                onForget = vm::forgetHost,
+                onToggleFavorite = vm::toggleFavorite,
+                onWake = vm::wakeHost
             )
         } else {
             Column(modifier = Modifier.padding(padding)) {

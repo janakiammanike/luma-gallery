@@ -88,8 +88,39 @@ fun KeyboardTab(vm: RemoteViewModel) {
             }
         }
 
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("Search inside an app", fontWeight = FontWeight.SemiBold)
+                Text(
+                    text = "Uses the text above. Opens the app's own search UI with a deep link where supported.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = { vm.appSearch("youtube.leanback.v4", state.keyboardText) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("YouTube")
+                    }
+                    OutlinedButton(
+                        onClick = { vm.appSearch("netflix", state.keyboardText) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Netflix")
+                    }
+                }
+            }
+        }
+
         Text(
-            text = "Text input works in standard webOS fields. YouTube's custom on-screen keyboard may ignore typed text on some firmware.",
+            text = "Standard webOS fields accept Send text directly. Apps with a custom keyboard (for example YouTube) may ignore typed text — use the app-specific search above, or navigate with the Cursor tab.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

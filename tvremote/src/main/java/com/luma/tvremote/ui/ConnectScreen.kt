@@ -34,9 +34,12 @@ fun ConnectScreen(
     onConnect: () -> Unit,
     onScan: () -> Unit,
     onPickHost: (String) -> Unit,
-    onForget: (String) -> Unit
+    onForget: (String) -> Unit,
+    onToggleFavorite: (String) -> Unit,
+    onWake: (String) -> Unit
 ) {
     val known = (state.savedHosts + state.detectedHosts).toList().distinct()
+        .sortedWith(compareBy({ host -> host !in state.favorites }, { host -> host }))
 
     Column(
         modifier = modifier
@@ -108,21 +111,41 @@ fun ConnectScreen(
         if (known.isNotEmpty()) {
             Text("Saved or found devices", fontWeight = FontWeight.SemiBold)
             known.forEach { host ->
+                val favorite = host in state.favorites
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onPickHost(host) },
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (favorite) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surface
+                        }
+                    )
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(host, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { onForget(host) }) {
-                            Text("Forget")
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(host, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                            TextButton(onClick = { onToggleFavorite(host) }) {
+                                Text(if (favorite) "★" else "☆")
+                            }
+                            TextButton(onClick = { onWake(host) }) {
+                                Text("Wake")
+                            }
+                            TextButton(onClick = { onForget(host) }) {
+                                Text("Forget")
+                            }
+                        }
+                        state.hostMacs[host]?.let { mac ->
+                            Text(
+                                "MAC $mac · Wake-on-LAN ready",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -131,7 +154,7 @@ fun ConnectScreen(
 
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Tip: scanning checks the local /24 network for ports 3000 and 3001. If your TV is on another subnet, enter its IP manually.",
+            text = "Tip: scanning checks the local /24 network for ports 3000 and 3001. Favorites stay at the top. Wake needs the TV's network standby enabled; connect once to learn its MAC address.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

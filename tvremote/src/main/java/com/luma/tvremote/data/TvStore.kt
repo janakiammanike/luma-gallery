@@ -15,8 +15,14 @@ class TvStore(context: Context) {
     }
 
     fun removeHost(host: String) {
-        prefs.edit().putStringSet(KEY_HOSTS, savedHosts() - host.trim()).apply()
-        prefs.edit().remove("key:${host.trim()}").apply()
+        val key = host.trim()
+        prefs.edit()
+            .putStringSet(KEY_HOSTS, savedHosts() - key)
+            .putStringSet(KEY_FAVORITES, favorites() - key)
+            .remove("key:$key")
+            .remove("mac:$key")
+            .remove("layout:$key")
+            .apply()
     }
 
     fun lastHost(): String? = prefs.getString(KEY_LAST_HOST, null)
@@ -31,8 +37,42 @@ class TvStore(context: Context) {
         prefs.edit().putString("key:${host.trim()}", key).apply()
     }
 
+    fun macFor(host: String): String? = prefs.getString("mac:${host.trim()}", null)
+
+    fun saveMac(host: String, mac: String) {
+        prefs.edit().putString("mac:${host.trim()}", mac).apply()
+    }
+
+    fun favorites(): Set<String> =
+        prefs.getStringSet(KEY_FAVORITES, emptySet()) ?: emptySet()
+
+    fun isFavorite(host: String): Boolean = host.trim() in favorites()
+
+    fun toggleFavorite(host: String) {
+        val key = host.trim()
+        val next = if (isFavorite(key)) favorites() - key else favorites() + key
+        prefs.edit().putStringSet(KEY_FAVORITES, next).apply()
+    }
+
+    /** Returns null when the host has never been customised (all groups visible). */
+    fun buttonLayout(host: String): Set<String>? {
+        val raw = prefs.getString("layout:${host.trim()}", null) ?: return null
+        return raw.split(',').filter { it.isNotBlank() }.toSet()
+    }
+
+    fun saveButtonLayout(host: String, groups: Set<String>) {
+        prefs.edit()
+            .putString("layout:${host.trim()}", groups.sorted().joinToString(","))
+            .apply()
+    }
+
+    fun clearButtonLayout(host: String) {
+        prefs.edit().remove("layout:${host.trim()}").apply()
+    }
+
     private companion object {
         const val KEY_HOSTS = "hosts"
         const val KEY_LAST_HOST = "last_host"
+        const val KEY_FAVORITES = "favorites"
     }
 }

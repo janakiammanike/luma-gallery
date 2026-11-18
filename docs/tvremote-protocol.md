@@ -27,6 +27,10 @@ Tested end-to-end on an **LG 55UR7500PSC** running **webOS 4.1.0**
   Keyboard and Apps tabs.
 - D-pad buttons, cursor/click, keyboard typing and app launch worked as
   expected on this firmware.
+- `com.webos.service.connectionmanager/getinfo` returned the Ethernet MAC
+  `64:E4:A5:2C:4E:A5` (matching the phone's ARP table), enabling Wake-on-LAN.
+- YouTube is installed as `youtube.leanback.v4` and accepted `youtube://`
+  deep-launch parameters from `system.launcher/launch`.
 
 Other webOS versions may differ; the limitations below still apply.
 
@@ -42,8 +46,11 @@ Other webOS versions may differ; the limitations below still apply.
 | Installed app list + launch | Yes | `listLaunchPoints` / `system.launcher/launch` |
 | Local app filtering | Yes | on-device filter of the TV's app list |
 | TV-wide search | Best effort | `com.webos.service.search/search`, then `com.webos.app.search` with a query param |
+| Search inside YouTube / Netflix | Best effort | app deep links (`youtube://results?search_query=…`), then app launch |
+| Multi-TV favorites | Yes | one client key + MAC per IP, favorites pinned at the top |
+| Custom button layout | Yes | per-TV visibility toggles for button groups |
+| Wake-on-LAN power on | Yes | UDP magic packet to the learned TV MAC, ports 7/9 |
 | ThinQ cloud devices (AC, fridge, etc.) | No | private LG cloud API, outside this app's scope |
-| Wake-on-LAN power on | Not in v0.1.0 | needs TV MAC + router support; may be added later |
 | webOS TV `.ipk` app | No | different SDK/toolchain; this app runs on the phone |
 
 ### Known limitations
@@ -53,8 +60,14 @@ Other webOS versions may differ; the limitations below still apply.
   ignore the query parameter; in that case use the **Keyboard** tab while the TV
   search box is focused.
 - YouTube's custom on-screen keyboard silently ignores `insertText` on some
-  firmware. The app cannot detect every case, so typed text may appear to do
-  nothing inside YouTube.
+  firmware. The **Keyboard → Search inside an app** buttons try a `youtube://`
+  deep link first, then fall back to launching the app; the snackbar reports
+  which path was used. If the app ignores the deep link, use the TV's own search
+  box with the Cursor/Keyboard tabs.
+- Wake-on-LAN requires the TV's network standby to be enabled and the phone and
+  TV on the same L2 LAN. The MAC is learned automatically after the first
+  successful connection. Software `system/turnOn` is attempted first when
+  connected; WoL is the fallback.
 - Cursor control only affects surfaces that accept mouse input. Apps that draw
   their own pointer may ignore `move`/`click`.
 

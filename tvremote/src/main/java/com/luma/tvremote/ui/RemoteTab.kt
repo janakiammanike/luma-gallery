@@ -24,8 +24,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
+private data class ButtonGroup(val id: String, val label: String)
+
+private val GROUPS = listOf(
+    ButtonGroup("dpad", "D-pad & system keys"),
+    ButtonGroup("system", "Home / Back / Menu"),
+    ButtonGroup("volume", "Volume & channels"),
+    ButtonGroup("playback", "Playback"),
+    ButtonGroup("power", "Power")
+)
+
 @Composable
 fun RemoteTab(vm: RemoteViewModel) {
+    val state = vm.ui.value
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -34,62 +46,112 @@ fun RemoteTab(vm: RemoteViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(0.9f),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+            OutlinedButton(
+                onClick = vm::toggleCustomizing,
+                modifier = Modifier.weight(1f)
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SmallKey("Home") { vm.pressButton("HOME") }
-                    SmallKey("Back") { vm.pressButton("BACK") }
-                    SmallKey("Menu") { vm.pressButton("MENU") }
-                    SmallKey("Exit") { vm.pressButton("EXIT") }
+                Text(if (state.customizing) "Done customizing" else "Customize buttons")
+            }
+            if (state.customizing) {
+                OutlinedButton(onClick = vm::resetLayout, modifier = Modifier.weight(1f)) {
+                    Text("Reset")
                 }
+            }
+        }
 
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Key("▲", Modifier.size(64.dp)) { vm.pressButton("UP") }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Key("◀", Modifier.size(64.dp)) { vm.pressButton("LEFT") }
-                        Key(
-                            "OK",
-                            Modifier
-                                .size(72.dp)
-                                .padding(4.dp),
-                            primary = true
-                        ) { vm.pressButton("ENTER") }
-                        Key("▶", Modifier.size(64.dp)) { vm.pressButton("RIGHT") }
+        if (state.customizing) {
+            SectionCard("Visible button groups") {
+                GROUPS.forEach { group ->
+                    val enabled = group.id in state.visibleGroups
+                    OutlinedButton(
+                        onClick = { vm.toggleGroup(group.id) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("${if (enabled) "✓" else "○"}  ${group.label}")
                     }
-                    Key("▼", Modifier.size(64.dp)) { vm.pressButton("DOWN") }
+                }
+                Text(
+                    "Changes are saved for ${state.connectedHost ?: "this TV"} only.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        if ("dpad" in state.visibleGroups && !state.customizing) {
+            Card(
+                modifier = Modifier.fillMaxWidth(0.9f),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if ("system" in state.visibleGroups) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SmallKey("Home") { vm.pressButton("HOME") }
+                            SmallKey("Back") { vm.pressButton("BACK") }
+                            SmallKey("Menu") { vm.pressButton("MENU") }
+                            SmallKey("Exit") { vm.pressButton("EXIT") }
+                        }
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Key("▲", Modifier.size(64.dp)) { vm.pressButton("UP") }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Key("◀", Modifier.size(64.dp)) { vm.pressButton("LEFT") }
+                            Key(
+                                "OK",
+                                Modifier
+                                    .size(72.dp)
+                                    .padding(4.dp),
+                                primary = true
+                            ) { vm.pressButton("ENTER") }
+                            Key("▶", Modifier.size(64.dp)) { vm.pressButton("RIGHT") }
+                        }
+                        Key("▼", Modifier.size(64.dp)) { vm.pressButton("DOWN") }
+                    }
                 }
             }
         }
 
-        SectionCard("Volume & channels") {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SmallKey("Vol −") { vm.volumeDown() }
-                SmallKey("Mute") { vm.toggleMute() }
-                SmallKey("Vol +") { vm.volumeUp() }
-                SmallKey("Ch −") { vm.channelDown() }
-                SmallKey("Ch +") { vm.channelUp() }
+        if ("volume" in state.visibleGroups && !state.customizing) {
+            SectionCard("Volume & channels") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SmallKey("Vol −") { vm.volumeDown() }
+                    SmallKey("Mute") { vm.toggleMute() }
+                    SmallKey("Vol +") { vm.volumeUp() }
+                    SmallKey("Ch −") { vm.channelDown() }
+                    SmallKey("Ch +") { vm.channelUp() }
+                }
             }
         }
 
-        SectionCard("Playback") {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SmallKey("⏮") { vm.rewind() }
-                SmallKey("▶") { vm.play() }
-                SmallKey("⏸") { vm.pause() }
-                SmallKey("⏹") { vm.stop() }
-                SmallKey("⏭") { vm.fastForward() }
+        if ("playback" in state.visibleGroups && !state.customizing) {
+            SectionCard("Playback") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SmallKey("⏮") { vm.rewind() }
+                    SmallKey("▶") { vm.play() }
+                    SmallKey("⏸") { vm.pause() }
+                    SmallKey("⏹") { vm.stop() }
+                    SmallKey("⏭") { vm.fastForward() }
+                }
             }
         }
 
-        OutlinedButton(onClick = { vm.powerOff() }) {
-            Text("Power off TV")
+        if ("power" in state.visibleGroups && !state.customizing) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = vm::powerOn) {
+                    Text("Power on TV")
+                }
+                OutlinedButton(onClick = { vm.powerOff() }) {
+                    Text("Power off TV")
+                }
+            }
         }
 
         Spacer(Modifier.height(12.dp))
