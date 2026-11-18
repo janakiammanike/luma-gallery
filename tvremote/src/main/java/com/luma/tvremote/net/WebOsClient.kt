@@ -266,6 +266,36 @@ class WebOsClient(
         }
     }
 
+    /**
+     * Hand the currently-playing phone track off to the TV. Uses the TV's own
+     * apps (YouTube / Spotify / system search) because Android cannot stream
+     * another app's DRM audio to the TV from here. Returns an honest status.
+     */
+    suspend fun sendMusicToTv(query: String, phoneApp: String?): String {
+        if (query.isBlank()) return "Play a song on your phone first"
+        val app = phoneApp.orEmpty()
+        return when {
+            app.contains("youtube", ignoreCase = true) ||
+                app.contains("music", ignoreCase = true) ->
+                searchInApp("youtube.leanback.v4", query)
+
+            app.contains("spotify", ignoreCase = true) -> {
+                // webOS Spotify app id varies by region; try known ids, then system search.
+                for (id in listOf("spotify-beehive", "com.spotify.webos", "spotify")) {
+                    try {
+                        request("system.launcher/launch", mapOf("id" to id))
+                        return "Opened Spotify on TV for “$query”. Use its search box to pick the song."
+                    } catch (_: Exception) {
+                        // try next id
+                    }
+                }
+                searchOnTv(query)
+            }
+
+            else -> searchOnTv(query)
+        }
+    }
+
     /** Returns a short description of which search path the TV accepted. */
     suspend fun searchOnTv(query: String): String {
         if (query.isBlank()) return "Type something to search"

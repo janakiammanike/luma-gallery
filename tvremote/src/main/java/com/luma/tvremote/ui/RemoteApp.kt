@@ -40,6 +40,7 @@ private val NAV_ITEMS = listOf(
 private val MORE_ITEMS = listOf(
     "inputs" to "Inputs & sound",
     "search" to "Content search",
+    "music" to "Music to TV",
     "cast" to "Cast & mirror"
 )
 
@@ -122,6 +123,7 @@ fun RemoteApp(vm: RemoteViewModel = viewModel()) {
                     "apps" -> AppsTab(vm)
                     "inputs" -> InputsTab(vm)
                     "search" -> SearchTab(vm)
+                    "music" -> MusicTab(vm)
                     "cast" -> CastTab(vm)
                 }
             }

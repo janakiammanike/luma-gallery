@@ -129,6 +129,10 @@ class MediaServer(private val context: Context, private val port: Int = 8123) :
         name.endsWith(".webm", true) -> "video/webm"
         name.endsWith(".3gp", true) -> "video/3gpp"
         name.endsWith(".mp3", true) -> "audio/mpeg"
+        name.endsWith(".m4a", true) || name.endsWith(".aac", true) -> "audio/mp4"
+        name.endsWith(".wav", true) -> "audio/wav"
+        name.endsWith(".ogg", true) -> "audio/ogg"
+        name.endsWith(".flac", true) -> "audio/flac"
         else -> "application/octet-stream"
     }
 }

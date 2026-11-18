@@ -45,9 +45,9 @@ fun CastTab(vm: RemoteViewModel) {
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("Screen mirroring & casting", fontWeight = FontWeight.SemiBold)
+                Text("Cast to TV", fontWeight = FontWeight.SemiBold)
                 Text(
-                    "Cast a photo or video from this phone to the TV. The file is served over your Wi‑Fi LAN — no cloud upload.",
+                    "Send a photo, video or song saved on this phone to the TV over Wi‑Fi — no cloud upload. The TV plays it on its own screen/speakers, like casting from the device.",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Button(
@@ -61,6 +61,12 @@ fun CastTab(vm: RemoteViewModel) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Cast a video")
+                }
+                Button(
+                    onClick = { picker.launch("audio/*") },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("♫  Cast a song")
                 }
                 state.castUrl?.let { url ->
                     Text("Now playing: $url", style = MaterialTheme.typography.bodySmall)
@@ -92,7 +98,7 @@ fun CastTab(vm: RemoteViewModel) {
         }
 
         Text(
-            "Full phone-screen mirroring and LG Magic Tap need system-level Wi‑Fi Direct / NFC APIs that a regular Android app cannot use. This tab casts media files over LAN instead.",
+            "Bluetooth-speaker style streaming of audio from Spotify / YouTube Music is not possible: Android blocks apps from capturing another app's protected audio, and this TV does not act as a Bluetooth speaker. Cast a saved song file here, or use Music to TV to hand the current track to the TV's own apps.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

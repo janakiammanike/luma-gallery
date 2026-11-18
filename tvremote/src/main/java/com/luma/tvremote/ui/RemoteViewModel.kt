@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.luma.tvremote.data.TvStore
+import com.luma.tvremote.media.NowPlaying
+import com.luma.tvremote.media.NowPlayingStore
 import com.luma.tvremote.net.ConnectResult
 import com.luma.tvremote.net.DiscoveredTv
 import com.luma.tvremote.net.DlnaClient
@@ -51,7 +53,10 @@ data class RemoteUiState(
     val foregroundApp: String? = null,
     val recentSearches: List<String> = emptyList(),
     val darkTheme: Boolean = false,
-    val castUrl: String? = null
+    val haptics: Boolean = true,
+    val castUrl: String? = null,
+    val nowPlaying: NowPlaying? = null,
+    val mediaAccessGranted: Boolean = false
 )
 
 class RemoteViewModel(application: Application) : AndroidViewModel(application) {
@@ -70,10 +75,21 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             }.toMap(),
             wifi = WifiStatus.read(application),
             recentSearches = store.recentSearches(),
-            darkTheme = store.darkTheme()
+            darkTheme = store.darkTheme(),
+            haptics = store.haptics(),
+            mediaAccessGranted = NowPlayingStore.isAccessGranted(application)
         )
     )
     val ui: StateFlow<RemoteUiState> = _ui.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            NowPlayingStore.track.collect { track ->
+                _ui.update { it.copy(nowPlaying = track) }
+            }
+        }
+        NowPlayingStore.readCurrent(getApplication())
+    }
 
     fun onHostInput(value: String) {
         _ui.update { it.copy(hostInput = value) }
@@ -469,6 +485,46 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         _ui.update { it.copy(darkTheme = enabled) }
     }
 
+    fun setHaptics(enabled: Boolean) {
+        store.setHaptics(enabled)
+        _ui.update { it.copy(haptics = enabled) }
+    }
+
+    fun refreshMediaAccess() {
+        val app = getApplication<android.app.Application>()
+        NowPlayingStore.readCurrent(app)
+        _ui.update {
+            it.copy(
+                mediaAccessGranted = NowPlayingStore.isAccessGranted(app),
+                nowPlaying = NowPlayingStore.track.value
+            )
+        }
+    }
+
+    /** Send the phone's currently-playing song to the TV's own apps. */
+    fun sendMusicToTv() {
+        val track = _ui.value.nowPlaying
+        if (track == null) {
+            _ui.update {
+                it.copy(message = if (it.mediaAccessGranted) {
+                    "No music is playing on this phone right now"
+                } else {
+                    "Enable notification access in Settings first, then play a song"
+                })
+            }
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val message = client?.sendMusicToTv(track.searchQuery, track.appPackage)
+                    ?: "Connect to a TV first"
+                _ui.update { it.copy(message = message) }
+            } catch (e: Exception) {
+                _ui.update { it.copy(message = e.message ?: "Could not send song to TV") }
+            }
+        }
+    }
+
     fun castMedia(uri: Uri) {
         viewModelScope.launch {
             try {
@@ -488,6 +544,9 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                         mime?.startsWith("image/") == true -> "png"
                         mime?.startsWith("video/mp4") == true -> "mp4"
                         mime?.startsWith("video/") == true -> "mp4"
+                        mime?.startsWith("audio/mpeg") == true -> "mp3"
+                        mime?.startsWith("audio/mp4") == true -> "m4a"
+                        mime?.startsWith("audio/") == true -> "mp3"
                         else -> "bin"
                     }
                 val name = "cast_media_${System.currentTimeMillis()}.$ext"
@@ -505,6 +564,10 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                         "mkv" -> "video/x-matroska"
                         "webm" -> "video/webm"
                         "mp3" -> "audio/mpeg"
+                        "m4a", "aac" -> "audio/mp4"
+                        "wav" -> "audio/wav"
+                        "ogg" -> "audio/ogg"
+                        "flac" -> "audio/flac"
                         else -> "application/octet-stream"
                     }
                 val server = MediaServer(app)
@@ -556,6 +619,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun runCommand(block: suspend (WebOsClient) -> Unit) {
+        Haptics.tick(getApplication(), _ui.value.haptics)
         viewModelScope.launch {
             val active = client
             if (active == null || !active.isConnected()) {

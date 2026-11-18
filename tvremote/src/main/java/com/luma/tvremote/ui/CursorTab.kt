@@ -120,16 +120,34 @@ fun CursorTab(vm: RemoteViewModel) {
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text("Scroll", fontWeight = FontWeight.SemiBold)
-                Row(
+                Text(
+                    "Scroll up / down / left / right in webOS lists and pages.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedButton(onClick = { vm.scroll(0, -120) }, modifier = Modifier.size(64.dp)) {
-                        Text("↑")
+                    OutlinedButton(onClick = { vm.scroll(0, -160) }, modifier = Modifier.fillMaxWidth()) {
+                        Text("▲  Scroll up")
                     }
-                    Button(onClick = { vm.clickPointer() }) { Text("Click") }
-                    OutlinedButton(onClick = { vm.scroll(0, 120) }, modifier = Modifier.size(64.dp)) {
-                        Text("↓")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(onClick = { vm.scroll(-160, 0) }, modifier = Modifier.weight(1f)) {
+                            Text("◀ Left")
+                        }
+                        Button(onClick = { vm.clickPointer() }) { Text("Click") }
+                        OutlinedButton(onClick = { vm.scroll(160, 0) }, modifier = Modifier.weight(1f)) {
+                            Text("Right ▶")
+                        }
+                    }
+                    OutlinedButton(onClick = { vm.scroll(0, 160) }, modifier = Modifier.fillMaxWidth()) {
+                        Text("▼  Scroll down")
                     }
                 }
             }

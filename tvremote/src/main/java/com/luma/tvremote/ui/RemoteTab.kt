@@ -121,6 +121,17 @@ fun RemoteTab(vm: RemoteViewModel) {
             }
         }
 
+        if ("dpad" in state.visibleGroups && !state.customizing) {
+            SectionCard("Scroll") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SmallKey("◀ Left") { vm.scroll(-160, 0) }
+                    SmallKey("▲ Up") { vm.scroll(0, -160) }
+                    SmallKey("▼ Down") { vm.scroll(0, 160) }
+                    SmallKey("Right ▶") { vm.scroll(160, 0) }
+                }
+            }
+        }
+
         if ("volume" in state.visibleGroups && !state.customizing) {
             SectionCard("Volume & channels") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

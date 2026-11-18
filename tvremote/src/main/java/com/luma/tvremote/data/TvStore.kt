@@ -91,11 +91,18 @@ class TvStore(context: Context) {
         prefs.edit().putBoolean(KEY_DARK_THEME, enabled).apply()
     }
 
+    fun haptics(): Boolean = prefs.getBoolean(KEY_HAPTICS, true)
+
+    fun setHaptics(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_HAPTICS, enabled).apply()
+    }
+
     private companion object {
         const val KEY_HOSTS = "hosts"
         const val KEY_LAST_HOST = "last_host"
         const val KEY_FAVORITES = "favorites"
         const val KEY_RECENT_SEARCHES = "recent_searches"
         const val KEY_DARK_THEME = "dark_theme"
+        const val KEY_HAPTICS = "haptics"
     }
 }
