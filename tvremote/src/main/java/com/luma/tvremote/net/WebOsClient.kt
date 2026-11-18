@@ -45,7 +45,8 @@ class WebOsClient(
     private val host: String,
     private val storedKey: String?,
     private val onStatus: (String) -> Unit = {},
-    private val onClientKey: (String) -> Unit = {}
+    private val onClientKey: (String) -> Unit = {},
+    private val onDisconnected: () -> Unit = {}
 ) {
     private val counter = AtomicInteger(0)
     private val pending = ConcurrentHashMap<String, CompletableDeferred<JSONObject>>()
@@ -189,6 +190,32 @@ class WebOsClient(
         request(ENDPOINT_DELETE_CHARS, mapOf("count" to count))
 
     suspend fun sendEnter() = request(ENDPOINT_SEND_ENTER)
+
+    /** Current audio state: volume, mute, and sound output (e.g. tv_speaker). */
+    suspend fun audioStatus(): JSONObject = request("audio/getStatus")
+
+    /** Switch TV sound output. tv_speaker works on webOS 4.1; others vary by firmware. */
+    suspend fun setSoundOutput(output: String) =
+        request("audio/changeSoundOutput", mapOf("output" to output))
+
+    /** Launch an HDMI / input app such as com.webos.app.hdmi1 or hdmi2. */
+    suspend fun selectInput(inputAppId: String) =
+        request("system.launcher/launch", mapOf("id" to inputAppId))
+
+    /** Close a running app (some firmware denies this to third-party clients). */
+    suspend fun closeApp(id: String) =
+        request("system.launcher/close", mapOf("id" to id))
+
+    /** Ask the TV's media player to open a URL served on the LAN. */
+    suspend fun playMediaUrl(url: String) =
+        request(
+            "system.launcher/launch",
+            mapOf("id" to "com.webos.app.mediadiscovery", "params" to mapOf("uri" to url))
+        )
+
+    /** Open the TV's built-in screen mirroring receiver. */
+    suspend fun openScreenMirroring() =
+        request("system.launcher/launch", mapOf("id" to "sooltrstudio.screenmirroring.receiver"))
 
     suspend fun toast(message: String) =
         request("system.notifications/createToast", mapOf("message" to message))
@@ -458,16 +485,19 @@ class WebOsClient(
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             opened.completeExceptionally(t)
+            if (connected) onDisconnected()
             connected = false
             failPending(t)
         }
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+            if (connected) onDisconnected()
             connected = false
             webSocket.close(1000, null)
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+            if (connected) onDisconnected()
             connected = false
             failPending(IllegalStateException("TV closed the connection"))
         }
@@ -480,10 +510,12 @@ class WebOsClient(
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             opened.completeExceptionally(t)
+            if (connected) onDisconnected()
             connected = false
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+            if (connected) onDisconnected()
             connected = false
         }
     }

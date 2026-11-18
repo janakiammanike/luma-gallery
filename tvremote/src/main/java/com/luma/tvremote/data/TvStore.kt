@@ -70,9 +70,32 @@ class TvStore(context: Context) {
         prefs.edit().remove("layout:${host.trim()}").apply()
     }
 
+    fun recentSearches(): List<String> =
+        prefs.getString(KEY_RECENT_SEARCHES, null)
+            ?.split('|')?.filter { it.isNotBlank() } ?: emptyList()
+
+    fun addRecentSearch(query: String) {
+        val q = query.trim()
+        if (q.isBlank()) return
+        val next = (listOf(q) + recentSearches().filter { it != q }).take(10)
+        prefs.edit().putString(KEY_RECENT_SEARCHES, next.joinToString("|")).apply()
+    }
+
+    fun clearRecentSearches() {
+        prefs.edit().remove(KEY_RECENT_SEARCHES).apply()
+    }
+
+    fun darkTheme(): Boolean = prefs.getBoolean(KEY_DARK_THEME, false)
+
+    fun setDarkTheme(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_DARK_THEME, enabled).apply()
+    }
+
     private companion object {
         const val KEY_HOSTS = "hosts"
         const val KEY_LAST_HOST = "last_host"
         const val KEY_FAVORITES = "favorites"
+        const val KEY_RECENT_SEARCHES = "recent_searches"
+        const val KEY_DARK_THEME = "dark_theme"
     }
 }

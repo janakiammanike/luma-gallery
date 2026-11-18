@@ -23,8 +23,10 @@ Tested end-to-end on an **LG 55UR7500PSC** running **webOS 4.1.0**
 
 - `wss://…:3001` handshake succeeded; `ws://…:3000` remains as fallback.
 - `PROMPT` pairing accepted on the TV; `client-key` saved per TV IP.
-- App reached `Connected · 192.168.1.10` and loaded the Remote, Cursor,
-  Keyboard and Apps tabs.
+- App reached `Connected · 192.168.1.10`; all seven screens (Remote, Cursor,
+  Keyboard, Apps, Inputs & sound, Content search, Cast & mirror) opened.
+- `audio/getStatus` returned volume **87**, `soundOutput: tv_speaker`, and the
+  foreground app was reported as `com.webos.app.hdmi1`.
 - D-pad buttons, cursor/click, keyboard typing and app launch worked as
   expected on this firmware.
 - `com.webos.service.connectionmanager/getinfo` returned the Ethernet MAC
@@ -52,6 +54,13 @@ Other webOS versions may differ; the limitations below still apply.
 | Multi-TV favorites | Yes | one client key + MAC per IP, favorites pinned at the top |
 | Custom button layout | Yes | per-TV visibility toggles for button groups |
 | Wake-on-LAN power on | Yes | UDP magic packet to the learned TV MAC, ports 7/9 |
+| App & input control | Yes | `system.launcher/launch` for HDMI apps, `close` best effort |
+| Sound output control | Best effort | `audio/getStatus` + `audio/changeSoundOutput` (`tv_speaker` verified) |
+| Content search & discovery | Yes | TV search + recent searches + app deep links |
+| Cast photos / videos | Yes | local NanoHTTPD server + `com.webos.app.mediadiscovery` URL launch |
+| Screen mirroring receiver | Yes | launches the TV's built-in Miracast receiver app |
+| Dark theme / settings | Yes | persisted preference |
+| Bottom navigation + More menu | Yes | five always-visible destinations; secondary screens in a dialog |
 | ThinQ cloud devices (AC, fridge, etc.) | No | private LG cloud API, outside this app's scope |
 | webOS TV `.ipk` app | No | different SDK/toolchain; this app runs on the phone |
 
@@ -74,6 +83,12 @@ Other webOS versions may differ; the limitations below still apply.
   TV on the same L2 LAN. The MAC is learned automatically after the first
   successful connection. Software `system/turnOn` is attempted first when
   connected; WoL is the fallback.
+- Full phone-screen mirroring and LG Magic Tap need system-level Wi‑Fi Direct /
+  NFC APIs that a regular Android app cannot use. The Cast tab serves a selected
+  photo/video over LAN and asks the TV's media player to open it instead.
+- `audio/changeSoundOutput` accepted only `tv_speaker` on the tested webOS 4.1
+  firmware; other outputs (Bluetooth, optical, ARC) are firmware-dependent and
+  the app reports failures honestly.
 - Cursor control only affects surfaces that accept mouse input. Apps that draw
   their own pointer may ignore `move`/`click`.
 

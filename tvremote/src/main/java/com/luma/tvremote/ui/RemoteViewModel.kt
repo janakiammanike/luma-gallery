@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.luma.tvremote.data.TvStore
 import com.luma.tvremote.net.ConnectResult
 import com.luma.tvremote.net.DiscoveredTv
+import android.net.Uri
 import com.luma.tvremote.net.LanScanner
+import com.luma.tvremote.net.MediaServer
 import com.luma.tvremote.net.MdnsScanner
 import com.luma.tvremote.net.TvApp
 import com.luma.tvremote.net.WakeOnLan
@@ -40,12 +42,20 @@ data class RemoteUiState(
     val appQuery: String = "",
     val keyboardText: String = "",
     val visibleGroups: Set<String> = DEFAULT_BUTTON_GROUPS,
-    val customizing: Boolean = false
+    val customizing: Boolean = false,
+    val audioVolume: Int = 0,
+    val audioMuted: Boolean = false,
+    val soundOutput: String = "—",
+    val foregroundApp: String? = null,
+    val recentSearches: List<String> = emptyList(),
+    val darkTheme: Boolean = false,
+    val castUrl: String? = null
 )
 
 class RemoteViewModel(application: Application) : AndroidViewModel(application) {
     private val store = TvStore(application)
     private var client: WebOsClient? = null
+    private var mediaServer: MediaServer? = null
 
     private val _ui = MutableStateFlow(
         RemoteUiState(
@@ -55,7 +65,9 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             hostMacs = store.savedHosts().mapNotNull { host ->
                 store.macFor(host)?.takeIf { it.isNotBlank() }?.let { host to it }
             }.toMap(),
-            wifi = WifiStatus.read(application)
+            wifi = WifiStatus.read(application),
+            recentSearches = store.recentSearches(),
+            darkTheme = store.darkTheme()
         )
     )
     val ui: StateFlow<RemoteUiState> = _ui.asStateFlow()
@@ -153,7 +165,17 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                 host = host,
                 storedKey = store.keyFor(host),
                 onStatus = { status -> _ui.update { it.copy(status = status) } },
-                onClientKey = { key -> store.saveKey(host, key) }
+                onClientKey = { key -> store.saveKey(host, key) },
+                onDisconnected = {
+                    client = null
+                    _ui.update {
+                        it.copy(
+                            connectedHost = null,
+                            status = "Connection lost — reconnect",
+                            message = "TV connection closed. Tap Connect again."
+                        )
+                    }
+                }
             )
             when (val result = newClient.connect()) {
                 is ConnectResult.Success -> {
@@ -386,6 +408,98 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                 _ui.update { it.copy(message = e.message ?: "Search failed") }
             }
         }
+    }
+
+    fun refreshAudio() {
+        viewModelScope.launch {
+            val active = client ?: return@launch
+            try {
+                val status = active.audioStatus()
+                val vs = status.optJSONObject("volumeStatus")
+                _ui.update {
+                    it.copy(
+                        audioVolume = vs?.optInt("volume") ?: status.optInt("volume", it.audioVolume),
+                        audioMuted = vs?.optBoolean("muteStatus")
+                            ?: status.optBoolean("mute", it.audioMuted),
+                        soundOutput = vs?.optString("soundOutput") ?: it.soundOutput,
+                        foregroundApp = active.foregroundApp()
+                    )
+                }
+            } catch (e: Exception) {
+                _ui.update { it.copy(message = e.message ?: "Could not read TV audio state") }
+            }
+        }
+    }
+
+    fun setSoundOutput(output: String) = runCommand { it.setSoundOutput(output); refreshAudio() }
+
+    fun selectInput(inputAppId: String) = runCommand { it.selectInput(inputAppId) }
+
+    fun closeForegroundApp() {
+        val app = _ui.value.foregroundApp ?: return
+        viewModelScope.launch {
+            try {
+                client?.closeApp(app)
+                _ui.update { it.copy(foregroundApp = null, message = "Closed $app") }
+            } catch (e: Exception) {
+                _ui.update { it.copy(message = "Could not close app: ${e.message ?: "denied by TV"}") }
+            }
+        }
+    }
+
+    fun openScreenMirroring() = runCommand { it.openScreenMirroring() }
+
+    fun playMediaUrl(url: String) = runCommand { it.playMediaUrl(url) }
+
+    fun addRecentSearch(query: String) {
+        store.addRecentSearch(query)
+        _ui.update { it.copy(recentSearches = store.recentSearches()) }
+    }
+
+    fun clearRecentSearches() {
+        store.clearRecentSearches()
+        _ui.update { it.copy(recentSearches = emptyList()) }
+    }
+
+    fun setDarkTheme(enabled: Boolean) {
+        store.setDarkTheme(enabled)
+        _ui.update { it.copy(darkTheme = enabled) }
+    }
+
+    fun castMedia(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                mediaServer?.shutdown()
+                val app = getApplication<android.app.Application>()
+                val name = "cast_media_${System.currentTimeMillis()}"
+                val cached = java.io.File(app.cacheDir, name)
+                app.contentResolver.openInputStream(uri).use { input ->
+                    cached.outputStream().use { output -> input?.copyTo(output) }
+                }
+                val server = MediaServer(app)
+                server.serve(cached)
+                mediaServer = server
+                val url = server.lanUrl(name)
+                    ?: throw IllegalStateException("Phone is not on Wi‑Fi")
+                playMediaUrl(url)
+                _ui.update {
+                    it.copy(castUrl = url, message = "Casting to TV via $url")
+                }
+            } catch (e: Exception) {
+                _ui.update { it.copy(message = "Cast failed: ${e.message ?: "unknown error"}") }
+            }
+        }
+    }
+
+    fun stopCast() {
+        mediaServer?.shutdown()
+        mediaServer = null
+        _ui.update { it.copy(castUrl = null, message = "Casting stopped") }
+    }
+
+    override fun onCleared() {
+        mediaServer?.shutdown()
+        super.onCleared()
     }
 
     private fun runCommand(block: suspend (WebOsClient) -> Unit) {

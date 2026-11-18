@@ -76,4 +76,5 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling)
 
     implementation(libs.okhttp)
+    implementation(libs.nanohttpd)
 }

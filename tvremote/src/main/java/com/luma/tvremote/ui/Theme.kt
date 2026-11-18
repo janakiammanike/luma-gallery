@@ -37,7 +37,8 @@ private val LightColors = lightColorScheme(
 )
 
 @Composable
-fun TVRemoteTheme(content: @Composable () -> Unit) {
-    val colors = if (isSystemInDarkTheme()) DarkColors else LightColors
+fun TVRemoteTheme(darkTheme: Boolean? = null, content: @Composable () -> Unit) {
+    val dark = darkTheme ?: isSystemInDarkTheme()
+    val colors = if (dark) DarkColors else LightColors
     MaterialTheme(colorScheme = colors, content = content)
 }
