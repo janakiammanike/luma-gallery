@@ -5,9 +5,13 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.luma.tvremote.data.TvStore
 import com.luma.tvremote.net.ConnectResult
+import com.luma.tvremote.net.DiscoveredTv
 import com.luma.tvremote.net.LanScanner
+import com.luma.tvremote.net.MdnsScanner
 import com.luma.tvremote.net.TvApp
 import com.luma.tvremote.net.WakeOnLan
+import com.luma.tvremote.net.WifiInfo
+import com.luma.tvremote.net.WifiStatus
 import com.luma.tvremote.net.WebOsClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +25,10 @@ data class RemoteUiState(
     val hostInput: String = "",
     val savedHosts: Set<String> = emptySet(),
     val detectedHosts: List<String> = emptyList(),
+    val mdnsHosts: List<DiscoveredTv> = emptyList(),
+    val isDiscovering: Boolean = false,
+    val wifi: WifiInfo? = null,
+    val tvLatencyMs: Long? = null,
     val favorites: Set<String> = emptySet(),
     val hostMacs: Map<String, String> = emptyMap(),
     val connectedHost: String? = null,
@@ -46,7 +54,8 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             favorites = store.favorites(),
             hostMacs = store.savedHosts().mapNotNull { host ->
                 store.macFor(host)?.takeIf { it.isNotBlank() }?.let { host to it }
-            }.toMap()
+            }.toMap(),
+            wifi = WifiStatus.read(application)
         )
     )
     val ui: StateFlow<RemoteUiState> = _ui.asStateFlow()
@@ -82,6 +91,40 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                     }
                 )
             }
+        }
+    }
+
+    fun discoverMdns() {
+        viewModelScope.launch {
+            _ui.update { it.copy(isDiscovering = true, message = null) }
+            val found = MdnsScanner.scan(getApplication())
+            val macs = found.mapNotNull { tv -> tv.mac?.let { tv.host to it } }.toMap()
+            found.forEach { tv ->
+                tv.mac?.let { store.saveMac(tv.host, it) }
+            }
+            _ui.update {
+                it.copy(
+                    isDiscovering = false,
+                    mdnsHosts = found,
+                    hostMacs = it.hostMacs + macs,
+                    message = if (found.isEmpty()) {
+                        "No mDNS TVs found. Use Scan network or enter the IP manually."
+                    } else {
+                        "Found ${found.size} TV(s) via mDNS."
+                    }
+                )
+            }
+        }
+    }
+
+    fun refreshLink() {
+        viewModelScope.launch {
+            val wifi = WifiStatus.read(getApplication())
+            val host = _ui.value.connectedHost ?: _ui.value.hostMacs.keys.firstOrNull()
+            val latency = host?.let { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                WifiStatus.latencyMs(it)
+            } }
+            _ui.update { it.copy(wifi = wifi, tvLatencyMs = latency) }
         }
     }
 

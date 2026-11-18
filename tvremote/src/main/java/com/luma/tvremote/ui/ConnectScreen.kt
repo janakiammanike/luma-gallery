@@ -33,12 +33,14 @@ fun ConnectScreen(
     onHostInput: (String) -> Unit,
     onConnect: () -> Unit,
     onScan: () -> Unit,
+    onDiscover: () -> Unit,
     onPickHost: (String) -> Unit,
     onForget: (String) -> Unit,
     onToggleFavorite: (String) -> Unit,
     onWake: (String) -> Unit
 ) {
-    val known = (state.savedHosts + state.detectedHosts).toList().distinct()
+    val mdnsHosts = state.mdnsHosts.map { it.host }
+    val known = (state.savedHosts + state.detectedHosts + mdnsHosts).toList().distinct()
         .sortedWith(compareBy({ host -> host !in state.favorites }, { host -> host }))
 
     Column(
@@ -58,6 +60,35 @@ fun ConnectScreen(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+
+        state.wifi?.let { wifi ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text(
+                        "Wi‑Fi ${wifi.ssid ?: "connected"}  ${"▮".repeat(wifi.bars)}${"▯".repeat(5 - wifi.bars)}",
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(
+                            "${wifi.rssi} dBm",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        state.tvLatencyMs?.let { latency ->
+                            Text(
+                                "TV link: $latency ms",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        TextButton(onClick = onDiscover) { Text("Refresh") }
+                    }
+                }
+            }
+        }
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -106,6 +137,13 @@ fun ConnectScreen(
             ) {
                 Text(if (state.isScanning) "Scanning…" else "Scan network")
             }
+            OutlinedButton(
+                onClick = onDiscover,
+                enabled = !state.isDiscovering,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(if (state.isDiscovering) "Finding…" else "mDNS")
+            }
         }
 
         if (known.isNotEmpty()) {
@@ -129,7 +167,16 @@ fun ConnectScreen(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(host, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(host, fontWeight = FontWeight.SemiBold)
+                                state.mdnsHosts.firstOrNull { it.host == host }?.let { tv ->
+                                    Text(
+                                        "${tv.model ?: "LG TV"} · via ${tv.source}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                             TextButton(onClick = { onToggleFavorite(host) }) {
                                 Text(if (favorite) "★" else "☆")
                             }

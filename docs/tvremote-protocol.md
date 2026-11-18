@@ -44,6 +44,8 @@ Other webOS versions may differ; the limitations below still apply.
 | Mouse cursor | Yes | `getPointerInputSocket` → `move`, `click`, `scroll` |
 | Keyboard typing | Yes | `com.webos.service.ime/insertText`, `sendEnterKey`, `deleteCharacters` |
 | Installed app list + launch | Yes | `listLaunchPoints` / `system.launcher/launch` |
+| mDNS auto-discovery | Yes | `NsdManager` on `_airplay._tcp` / `_raop._tcp`, reads MAC from TXT `deviceid` |
+| Wi-Fi signal + TV link latency | Yes | RSSI bars (1–5) and TCP connect timing to port 3001 |
 | Local app filtering | Yes | on-device filter of the TV's app list |
 | TV-wide search | Best effort | `com.webos.service.search/search`, then `com.webos.app.search` with a query param |
 | Search inside YouTube / Netflix | Best effort | app deep links (`youtube://results?search_query=…`), then app launch |
@@ -59,6 +61,10 @@ Other webOS versions may differ; the limitations below still apply.
   search service, then launches the built-in search app. Some firmware versions
   ignore the query parameter; in that case use the **Keyboard** tab while the TV
   search box is focused.
+- mDNS discovery depends on the TV advertising AirPlay 2 (`_airplay._tcp`). If
+  that service is disabled on the TV, use **Scan network** or manual IP entry.
+  Discovery runs for 6 seconds; Wi-Fi SSID is hidden by Android without a
+  location permission, so the app shows signal bars and RSSI instead.
 - YouTube's custom on-screen keyboard silently ignores `insertText` on some
   firmware. The **Keyboard → Search inside an app** buttons try a `youtube://`
   deep link first, then fall back to launching the app; the snackbar reports

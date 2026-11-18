@@ -67,6 +67,7 @@ fun RemoteApp(vm: RemoteViewModel = viewModel()) {
                 onHostInput = vm::onHostInput,
                 onConnect = { vm.connect() },
                 onScan = vm::scan,
+                onDiscover = vm::discoverMdns,
                 onPickHost = { vm.connect(it) },
                 onForget = vm::forgetHost,
                 onToggleFavorite = vm::toggleFavorite,
