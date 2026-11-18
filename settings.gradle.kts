@@ -20,5 +20,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Luma"
+rootProject.name = "JanakApps"
 include(":app")
+include(":tvremote")

@@ -71,15 +71,32 @@ npm run build
 
 ## Project layout
 
+This repository is a small monorepo. Luma stays in `app/` so existing tags and
+release paths keep working; new apps are added as sibling Gradle modules.
+
 ```
-app/                     Android app (single module, Compose)
+app/                     Luma gallery (Compose, com.luma.gallery)
   src/main/java/com/luma/gallery/
     data/                MediaStore repository, models, trash/vault stores
     ui/                  gallery, albums, viewer, editor, settings, theme
     web/                 LAN server, media pipeline, foreground service
   src/main/assets/web/   built React UI
-webui/                   React + Vite source for the web UI
+tvremote/                Luma TV Remote (Compose, com.luma.tvremote)
+  src/main/java/com/luma/tvremote/net/   webOS SSAP client + LAN scan
+  src/main/java/com/luma/tvremote/ui/    connect, remote, cursor, keyboard, apps
+webui/                   React + Vite source for Luma's web UI
+docs/                    verification notes, webOS protocol notes
 ```
+
+Build the remote app:
+
+```bash
+./gradlew :tvremote:assembleDebug
+# APK → tvremote/build/outputs/apk/debug/tvremote-debug.apk
+```
+
+See [`docs/tvremote-protocol.md`](docs/tvremote-protocol.md) for setup, supported
+features and protocol attribution.
 
 ## Notes
 
