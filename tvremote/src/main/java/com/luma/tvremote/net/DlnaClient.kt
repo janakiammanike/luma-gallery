@@ -6,6 +6,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.concurrent.TimeUnit
 
 /**
  * Minimal DLNA / UPnP AVTransport client that casts a LAN media URL to the
@@ -17,7 +18,13 @@ import okhttp3.RequestBody.Companion.toRequestBody
  * CurrentTransportState = PLAYING.
  */
 class DlnaClient(private val host: String) {
-    private val http = OkHttpClient()
+    // Video SetAVTransportURI/Play can take >10s on webOS; default OkHttp timeouts are too short.
+    private val http = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(45, TimeUnit.SECONDS)
+        .writeTimeout(15, TimeUnit.SECONDS)
+        .callTimeout(60, TimeUnit.SECONDS)
+        .build()
 
     sealed class Result {
         object Success : Result()

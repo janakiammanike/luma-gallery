@@ -38,6 +38,10 @@ Tested end-to-end on an **LG 55UR7500PSC** running **webOS 4.1.0**
   with `SetAVTransportURI` + `Play` made the TV issue `HEAD` and `GET` for the
   URL and report `CurrentTransportState: PLAYING` — real playback, not just
   opening the media app (verified from the phone's own NanoHTTPD server).
+  Both **photos and videos** verified playing (a 2:34 MP4 reported `PLAYING`
+  with the phone URL). The client uses generous HTTP timeouts because video
+  `Play` can exceed 10s, and the media server answers byte-range requests for
+  seekable streaming.
 
 Other webOS versions may differ; the limitations below still apply.
 
@@ -62,7 +66,7 @@ Other webOS versions may differ; the limitations below still apply.
 | App & input control | Yes | `system.launcher/launch` for HDMI apps, `close` best effort |
 | Sound output control | Best effort | `audio/getStatus` + `audio/changeSoundOutput` (`tv_speaker` verified) |
 | Content search & discovery | Yes | TV search + recent searches + app deep links |
-| Cast photos / videos | Yes | local NanoHTTPD server + DLNA AVTransport `SetAVTransportURI`/`Play` (SSAP media-app launch as fallback) |
+| Cast photos / videos | Yes | local NanoHTTPD server (byte-range aware) + DLNA AVTransport `SetAVTransportURI`/`Play` with extended timeouts (SSAP media-app launch as fallback) |
 | Screen mirroring receiver | Yes | launches the TV's built-in Miracast receiver app |
 | Dark theme / settings | Yes | persisted preference |
 | Bottom navigation + More menu | Yes | five always-visible destinations; secondary screens in a dialog |
