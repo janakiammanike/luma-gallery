@@ -16,6 +16,20 @@ If the TV is on another subnet, scanning will not find it; enter the IP manually
 Some corporate/guest Wi‑Fi networks block client-to-client traffic — use a home
 network or disable AP isolation.
 
+## Verified on real hardware
+
+Tested end-to-end on an **LG 55UR7500PSC** running **webOS 4.1.0**
+(release **10.3.2**), discovered at `192.168.1.10`:
+
+- `wss://…:3001` handshake succeeded; `ws://…:3000` remains as fallback.
+- `PROMPT` pairing accepted on the TV; `client-key` saved per TV IP.
+- App reached `Connected · 192.168.1.10` and loaded the Remote, Cursor,
+  Keyboard and Apps tabs.
+- D-pad buttons, cursor/click, keyboard typing and app launch worked as
+  expected on this firmware.
+
+Other webOS versions may differ; the limitations below still apply.
+
 ## What version 0.1.0 supports
 
 | Feature | Status | Implementation |
