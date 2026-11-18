@@ -33,6 +33,11 @@ Tested end-to-end on an **LG 55UR7500PSC** running **webOS 4.1.0**
   `64:E4:A5:2C:4E:A5` (matching the phone's ARP table), enabling Wake-on-LAN.
 - YouTube is installed as `youtube.leanback.v4` and accepted `youtube://`
   deep-launch parameters from `system.launcher/launch`.
+- The TV exposes a **DLNA MediaRenderer** at `http://192.168.1.10:1107/`
+  (`urn:schemas-upnp-org:service:AVTransport:1`). Casting a phone-hosted file
+  with `SetAVTransportURI` + `Play` made the TV issue `HEAD` and `GET` for the
+  URL and report `CurrentTransportState: PLAYING` — real playback, not just
+  opening the media app (verified from the phone's own NanoHTTPD server).
 
 Other webOS versions may differ; the limitations below still apply.
 
@@ -57,7 +62,7 @@ Other webOS versions may differ; the limitations below still apply.
 | App & input control | Yes | `system.launcher/launch` for HDMI apps, `close` best effort |
 | Sound output control | Best effort | `audio/getStatus` + `audio/changeSoundOutput` (`tv_speaker` verified) |
 | Content search & discovery | Yes | TV search + recent searches + app deep links |
-| Cast photos / videos | Yes | local NanoHTTPD server + `com.webos.app.mediadiscovery` URL launch |
+| Cast photos / videos | Yes | local NanoHTTPD server + DLNA AVTransport `SetAVTransportURI`/`Play` (SSAP media-app launch as fallback) |
 | Screen mirroring receiver | Yes | launches the TV's built-in Miracast receiver app |
 | Dark theme / settings | Yes | persisted preference |
 | Bottom navigation + More menu | Yes | five always-visible destinations; secondary screens in a dialog |
@@ -85,7 +90,10 @@ Other webOS versions may differ; the limitations below still apply.
   connected; WoL is the fallback.
 - Full phone-screen mirroring and LG Magic Tap need system-level Wi‑Fi Direct /
   NFC APIs that a regular Android app cannot use. The Cast tab serves a selected
-  photo/video over LAN and asks the TV's media player to open it instead.
+  photo/video from the phone over LAN and plays it on the TV through the DLNA
+  MediaRenderer (`AVTransport`), which was verified to actually render the file.
+  If the firmware rejects the DLNA metadata, the app falls back to launching the
+  TV's media app with the URL, which is less reliable.
 - `audio/changeSoundOutput` accepted only `tv_speaker` on the tested webOS 4.1
   firmware; other outputs (Bluetooth, optical, ARC) are firmware-dependent and
   the app reports failures honestly.

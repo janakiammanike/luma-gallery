@@ -210,7 +210,10 @@ class WebOsClient(
     suspend fun playMediaUrl(url: String) =
         request(
             "system.launcher/launch",
-            mapOf("id" to "com.webos.app.mediadiscovery", "params" to mapOf("uri" to url))
+            mapOf(
+                "id" to "com.webos.app.mediadiscovery",
+                "params" to mapOf("uri" to url, "mediaUrl" to url)
+            )
         )
 
     /** Open the TV's built-in screen mirroring receiver. */

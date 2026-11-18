@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.luma.tvremote.data.TvStore
 import com.luma.tvremote.net.ConnectResult
 import com.luma.tvremote.net.DiscoveredTv
+import com.luma.tvremote.net.DlnaClient
 import android.net.Uri
+import android.provider.OpenableColumns
 import com.luma.tvremote.net.LanScanner
 import com.luma.tvremote.net.MediaServer
 import com.luma.tvremote.net.MdnsScanner
@@ -56,6 +58,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     private val store = TvStore(application)
     private var client: WebOsClient? = null
     private var mediaServer: MediaServer? = null
+    private var dlna: DlnaClient? = null
 
     private val _ui = MutableStateFlow(
         RemoteUiState(
@@ -471,19 +474,65 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 mediaServer?.shutdown()
                 val app = getApplication<android.app.Application>()
-                val name = "cast_media_${System.currentTimeMillis()}"
+                val displayName = app.contentResolver.query(
+                    uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) cursor.getString(0) else null
+                }
+                val mime = app.contentResolver.getType(uri)
+                val ext = displayName?.substringAfterLast('.', "")
+                    ?.takeIf { it.length in 3..5 }
+                    ?: when {
+                        mime?.startsWith("image/jpeg") == true -> "jpg"
+                        mime?.startsWith("image/png") == true -> "png"
+                        mime?.startsWith("image/") == true -> "png"
+                        mime?.startsWith("video/mp4") == true -> "mp4"
+                        mime?.startsWith("video/") == true -> "mp4"
+                        else -> "bin"
+                    }
+                val name = "cast_media_${System.currentTimeMillis()}.$ext"
                 val cached = java.io.File(app.cacheDir, name)
                 app.contentResolver.openInputStream(uri).use { input ->
                     cached.outputStream().use { output -> input?.copyTo(output) }
                 }
+                val mediaMime = mime?.takeIf { it.contains("/") }
+                    ?: when (ext) {
+                        "jpg", "jpeg" -> "image/jpeg"
+                        "png" -> "image/png"
+                        "gif" -> "image/gif"
+                        "webp" -> "image/webp"
+                        "mp4" -> "video/mp4"
+                        "mkv" -> "video/x-matroska"
+                        "webm" -> "video/webm"
+                        "mp3" -> "audio/mpeg"
+                        else -> "application/octet-stream"
+                    }
                 val server = MediaServer(app)
                 server.serve(cached)
                 mediaServer = server
                 val url = server.lanUrl(name)
                     ?: throw IllegalStateException("Phone is not on Wi‑Fi")
-                playMediaUrl(url)
-                _ui.update {
-                    it.copy(castUrl = url, message = "Casting to TV via $url")
+                val host = _ui.value.connectedHost
+                    ?: throw IllegalStateException("Connect to the TV first")
+                val renderer = DlnaClient(host)
+                when (val result = renderer.cast(url, mediaMime, displayName ?: "Luma Cast")) {
+                    is DlnaClient.Result.Success -> {
+                        dlna = renderer
+                        _ui.update {
+                            it.copy(castUrl = url, message = "Casting to TV over DLNA · $url")
+                        }
+                    }
+                    is DlnaClient.Result.Failure -> {
+                        // Fallback: open the TV media app. Some firmware rejects DLNA metadata.
+                        playMediaUrl(url)
+                        dlna = renderer
+                        _ui.update {
+                            it.copy(
+                                castUrl = url,
+                                message = "DLNA unavailable (${result.message}); opened TV media app instead"
+                            )
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 _ui.update { it.copy(message = "Cast failed: ${e.message ?: "unknown error"}") }
@@ -492,9 +541,13 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun stopCast() {
-        mediaServer?.shutdown()
-        mediaServer = null
-        _ui.update { it.copy(castUrl = null, message = "Casting stopped") }
+        viewModelScope.launch {
+            dlna?.stop()
+            dlna = null
+            mediaServer?.shutdown()
+            mediaServer = null
+            _ui.update { it.copy(castUrl = null, message = "Casting stopped") }
+        }
     }
 
     override fun onCleared() {

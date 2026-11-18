@@ -2,6 +2,7 @@ package com.luma.tvremote.net
 
 import android.content.Context
 import android.net.wifi.WifiManager
+import android.util.Log
 import fi.iki.elonen.NanoHTTPD
 import fi.iki.elonen.NanoHTTPD.Response.Status
 import java.io.File
@@ -24,6 +25,7 @@ class MediaServer(private val context: Context, private val port: Int = 8123) :
     }
 
     override fun serve(session: IHTTPSession?): Response {
+        Log.d("LumaCast", "request ${session?.uri} from ${session?.remoteIpAddress}")
         val target = file
         if (target == null || !target.exists()) {
             return newFixedLengthResponse(Status.NOT_FOUND, MIME_PLAINTEXT, "No media loaded")
