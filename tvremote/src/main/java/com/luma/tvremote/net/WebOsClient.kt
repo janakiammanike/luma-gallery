@@ -432,8 +432,15 @@ class WebOsClient(
         } catch (_: Exception) {
             return
         }
-        val id = message.opt("id")?.toString() ?: return
         val type = message.optString("type")
+
+        // webOS hello responses have no "id" field; match them by type.
+        if (type == "hello") {
+            pending.remove("hello")?.complete(message)
+            return
+        }
+
+        val id = message.opt("id")?.toString() ?: return
 
         if (id == REGISTER_ID) {
             when (type) {
