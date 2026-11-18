@@ -33,6 +33,11 @@ Tested end-to-end on an **LG 55UR7500PSC** running **webOS 4.1.0**
   `64:E4:A5:2C:4E:A5` (matching the phone's ARP table), enabling Wake-on-LAN.
 - YouTube is installed as `youtube.leanback.v4` and accepted `youtube://`
   deep-launch parameters from `system.launcher/launch`.
+- The **Screen Mirroring** button launches `sooltrstudio.screenmirroring.receiver`
+  ("Screen Mirroring Media Receiver"), which is installed on this firmware;
+  the TV reported it as the foreground app after both a direct SSAP launch and
+  the app's own button. Other guessed IDs (`com.webos.app.miracast`, etc.) either
+  failed with 500 or did not stay in the foreground.
 - The TV exposes a **DLNA MediaRenderer** at `http://192.168.1.10:1107/`
   (`urn:schemas-upnp-org:service:AVTransport:1`). Casting a phone-hosted file
   with `SetAVTransportURI` + `Play` made the TV issue `HEAD` and `GET` for the
@@ -67,7 +72,7 @@ Other webOS versions may differ; the limitations below still apply.
 | Sound output control | Best effort | `audio/getStatus` + `audio/changeSoundOutput` (`tv_speaker` verified) |
 | Content search & discovery | Yes | TV search + recent searches + app deep links |
 | Cast photos / videos | Yes | local NanoHTTPD server (byte-range aware) + DLNA AVTransport `SetAVTransportURI`/`Play` with extended timeouts (SSAP media-app launch as fallback) |
-| Screen mirroring receiver | Yes | launches the TV's built-in Miracast receiver app |
+| Screen mirroring receiver | Yes | launches `sooltrstudio.screenmirroring.receiver` (verified foreground) |
 | Dark theme / settings | Yes | persisted preference |
 | Bottom navigation + More menu | Yes | five always-visible destinations; secondary screens in a dialog |
 | ThinQ cloud devices (AC, fridge, etc.) | No | private LG cloud API, outside this app's scope |
