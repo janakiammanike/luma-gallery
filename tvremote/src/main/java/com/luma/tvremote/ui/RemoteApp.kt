@@ -1,5 +1,10 @@
 package com.luma.tvremote.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -21,10 +26,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 private data class NavItem(val key: String, val label: String, val glyph: String)
@@ -51,6 +58,32 @@ fun RemoteApp(vm: RemoteViewModel = viewModel()) {
     var screen by remember { mutableStateOf("remote") }
     var showMore by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    val bluetoothPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
+    } else {
+        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
+    }
+    val bluetoothLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { granted ->
+        if (granted.values.all { it }) {
+            vm.discoverBluetooth()
+        } else {
+            vm.reportBluetoothBlocked("Bluetooth permission denied — allow it in Settings to discover the TV.")
+        }
+    }
+    fun startBluetoothDiscovery() {
+        val missing = bluetoothPermissions.filter {
+            ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isEmpty()) {
+            vm.discoverBluetooth()
+        } else {
+            bluetoothLauncher.launch(missing.toTypedArray())
+        }
+    }
 
     LaunchedEffect(state.message) {
         state.message?.let {
@@ -109,6 +142,7 @@ fun RemoteApp(vm: RemoteViewModel = viewModel()) {
                 onConnect = { vm.connect() },
                 onScan = vm::scan,
                 onDiscover = vm::discoverMdns,
+                onDiscoverBluetooth = ::startBluetoothDiscovery,
                 onPickHost = { vm.connect(it) },
                 onForget = vm::forgetHost,
                 onToggleFavorite = vm::toggleFavorite,

@@ -6,6 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.luma.tvremote.data.TvStore
 import com.luma.tvremote.media.NowPlaying
 import com.luma.tvremote.media.NowPlayingStore
+import com.luma.tvremote.net.ArpTvScanner
+import com.luma.tvremote.net.BleDevice
+import com.luma.tvremote.net.BluetoothTvScanner
 import com.luma.tvremote.net.ConnectResult
 import com.luma.tvremote.net.DiscoveredTv
 import com.luma.tvremote.net.DlnaClient
@@ -33,6 +36,9 @@ data class RemoteUiState(
     val detectedHosts: List<String> = emptyList(),
     val mdnsHosts: List<DiscoveredTv> = emptyList(),
     val isDiscovering: Boolean = false,
+    val isDiscoveringBluetooth: Boolean = false,
+    val bleDevices: List<BleDevice> = emptyList(),
+    val bluetoothStatus: String? = null,
     val wifi: WifiInfo? = null,
     val tvLatencyMs: Long? = null,
     val favorites: Set<String> = emptySet(),
@@ -151,6 +157,89 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /**
+     * Bluetooth-assisted discovery: BLE finds nearby devices, ARP turns a known
+     * / LG MAC into the TV's CURRENT LAN IP, and each candidate is confirmed by
+     * probing the webOS ports. This survives DHCP IP changes that break mDNS.
+     */
+    fun discoverBluetooth() {
+        viewModelScope.launch {
+            _ui.update {
+                it.copy(
+                    isDiscoveringBluetooth = true,
+                    bluetoothStatus = "Scanning…",
+                    message = null
+                )
+            }
+            val ble = BluetoothTvScanner.scan(getApplication())
+            // ARP is best effort (Android may block /proc/net/arp), so the
+            // dependable step is probing the local /24 for webOS ports.
+            val lanHosts = LanScanner.scan(getApplication())
+            val macByHost = _ui.value.hostMacs + store.savedHosts()
+                .mapNotNull { host -> store.macFor(host)?.let { host to it } }.toMap()
+            val lanTvs = lanHosts.map { ip ->
+                DiscoveredTv(ip, macByHost[ip], null, "Bluetooth + LAN")
+            }
+            val knownMacs = macByHost.values.filter { it.isNotBlank() }.toSet()
+            val bleMacs = ble.devices.map { it.address }.toSet()
+            val arpTvs = ArpTvScanner.scan(knownMacs, bleMacs)
+            val mdnsTvs = MdnsScanner.scan(getApplication())
+            val merged = (lanTvs + arpTvs + mdnsTvs).distinctBy { it.host }
+
+            merged.forEach { tv ->
+                tv.mac?.let { store.saveMac(tv.host, it) }
+            }
+            val macs = merged.mapNotNull { tv -> tv.mac?.let { tv.host to it } }.toMap()
+            val tvLikes = ble.devices.filter { BluetoothTvScanner.looksLikeTv(it) }
+
+            _ui.update { current ->
+                current.copy(
+                    isDiscoveringBluetooth = false,
+                    bleDevices = ble.devices,
+                    mdnsHosts = (current.mdnsHosts + merged).distinctBy { it.host },
+                    hostMacs = current.hostMacs + macs,
+                    detectedHosts = (current.detectedHosts + merged.map { it.host }).distinct(),
+                    bluetoothStatus = when {
+                        !ble.supported -> "Bluetooth not available on this phone"
+                        !ble.enabled -> "Bluetooth is off — enable it and retry"
+                        lanTvs.isEmpty() && ble.devices.isEmpty() ->
+                            "No nearby Bluetooth devices and no TV on the LAN"
+                        else -> buildString {
+                            append("BLE ${ble.devices.size} device(s)")
+                            if (tvLikes.isNotEmpty()) append(" · ${tvLikes.size} TV-like")
+                            append(" · LAN ${lanTvs.size} TV(s)")
+                        }
+                    },
+                    message = if (merged.isEmpty()) {
+                        "Bluetooth scan ran, but no webOS TV answered on the LAN. Stay on the same Wi‑Fi."
+                    } else {
+                        "Found ${merged.size} TV(s) via Bluetooth + LAN."
+                    }
+                )
+            }
+        }
+    }
+
+    fun reportBluetoothBlocked(reason: String) {
+        _ui.update { it.copy(bluetoothStatus = reason, message = reason) }
+    }
+
+    /** Re-resolve a remembered host by MAC if DHCP moved the TV to a new IP. */
+    private suspend fun resolveTvIp(host: String): String {
+        // Prefer the MAC learned for this exact host; with a single saved TV,
+        // reuse its MAC even if the user typed an older IP by hand.
+        val mac = store.macFor(host) ?: run {
+            val known = store.savedHosts().mapNotNull { store.macFor(it) }.distinct()
+            known.singleOrNull()
+        } ?: return host
+        val current = ArpTvScanner.scan(knownMacs = setOf(mac)).firstOrNull()?.host ?: return host
+        if (current == host) return host
+        store.addHost(current)
+        store.saveMac(current, mac)
+        store.setLastHost(current)
+        return current
+    }
+
     fun refreshLink() {
         viewModelScope.launch {
             val wifi = WifiStatus.read(getApplication())
@@ -163,12 +252,12 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun connect(hostOverride: String? = null) {
-        val host = (hostOverride ?: _ui.value.hostInput)
+        val requestedHost = (hostOverride ?: _ui.value.hostInput)
             .trim()
             .removePrefix("http://")
             .removePrefix("https://")
             .substringBefore("/")
-        if (host.isBlank()) {
+        if (requestedHost.isBlank()) {
             _ui.update { it.copy(message = "Enter your TV's IP address") }
             return
         }
@@ -176,38 +265,50 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             _ui.update {
                 it.copy(
-                    hostInput = host,
+                    hostInput = requestedHost,
                     isConnecting = true,
                     status = "Connecting…",
                     message = null
                 )
             }
             client?.close()
-            val newClient = WebOsClient(
-                host = host,
-                storedKey = store.keyFor(host),
-                onStatus = { status -> _ui.update { it.copy(status = status) } },
-                onClientKey = { key -> store.saveKey(host, key) },
-                onDisconnected = {
-                    client = null
-                    _ui.update {
-                        it.copy(
-                            connectedHost = null,
-                            status = "Connection lost — reconnect",
-                            message = "TV connection closed. Tap Connect again."
-                        )
+
+            // A remembered IP goes stale after DHCP renewal. ARP is best effort
+            // (blocked on some Android builds), so a failed connect triggers a
+            // LAN re-scan and retry — that works on every phone.
+            var host = resolveTvIp(requestedHost)
+            var result = attemptConnect(host)
+            var moved = host != requestedHost
+
+            if (result is ConnectResult.Failure) {
+                _ui.update {
+                    it.copy(message = "${result.message} — looking for the TV on this Wi‑Fi…")
+                }
+                for (candidate in LanScanner.scan(getApplication())) {
+                    if (candidate == host) continue
+                    if (store.keyFor(candidate).isNullOrBlank()) {
+                        store.keyFor(host)?.takeIf { it.isNotBlank() }
+                            ?.let { key -> store.saveKey(candidate, key) }
+                    }
+                    val retry = attemptConnect(candidate)
+                    if (retry is ConnectResult.Success) {
+                        host = candidate
+                        result = retry
+                        moved = true
+                        break
                     }
                 }
-            )
-            when (val result = newClient.connect()) {
+            }
+
+            when (result) {
                 is ConnectResult.Success -> {
-                    client = newClient
                     store.addHost(host)
                     store.setLastHost(host)
                     val layout = store.buttonLayout(host) ?: DEFAULT_BUTTON_GROUPS
                     _ui.update {
                         it.copy(
                             connectedHost = host,
+                            hostInput = host,
                             savedHosts = store.savedHosts(),
                             hostMacs = it.hostMacs + (store.macFor(host)?.let { mac -> host to mac }?.let { mapOf(it) }
                                 ?: emptyMap()),
@@ -215,15 +316,16 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                             customizing = false,
                             isConnecting = false,
                             status = "Connected · $host",
-                            message = "Pairing saved. You're connected!"
+                            message = if (moved) {
+                                "TV moved to $host — reconnected automatically"
+                            } else "Pairing saved. You're connected!"
                         )
                     }
                     loadApps()
-                    learnMac(host, newClient)
+                    learnMac(host, client ?: return@launch)
                 }
 
                 is ConnectResult.Failure -> {
-                    newClient.close()
                     _ui.update {
                         it.copy(
                             isConnecting = false,
@@ -234,6 +336,32 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
         }
+    }
+
+    private suspend fun attemptConnect(host: String): ConnectResult {
+        val newClient = WebOsClient(
+            host = host,
+            storedKey = store.keyFor(host),
+            onStatus = { status -> _ui.update { it.copy(status = status) } },
+            onClientKey = { key -> store.saveKey(host, key) },
+            onDisconnected = {
+                client = null
+                _ui.update {
+                    it.copy(
+                        connectedHost = null,
+                        status = "Connection lost — reconnect",
+                        message = "TV connection closed. Tap Connect again."
+                    )
+                }
+            }
+        )
+        val result = newClient.connect()
+        if (result is ConnectResult.Success) {
+            client = newClient
+        } else {
+            newClient.close()
+        }
+        return result
     }
 
     private fun learnMac(host: String, active: WebOsClient) {

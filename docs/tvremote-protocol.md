@@ -19,7 +19,8 @@ network or disable AP isolation.
 ## Verified on real hardware
 
 Tested end-to-end on an **LG 55UR7500PSC** running **webOS 4.1.0**
-(release **10.3.2**), discovered at `192.168.1.10`:
+(release **10.3.2**). The TV's DHCP lease later changed from `192.168.1.10` to
+`192.168.1.2`; discovery and reconnect were verified again at the new IP:
 
 - `wss://…:3001` handshake succeeded; `ws://…:3000` remains as fallback.
 - `PROMPT` pairing accepted on the TV; `client-key` saved per TV IP.
@@ -62,7 +63,9 @@ Other webOS versions may differ; the limitations below still apply.
 | Keyboard typing | Yes | `com.webos.service.ime/insertText`, `sendEnterKey`, `deleteCharacters` |
 | Installed app list + launch | Yes | `listLaunchPoints` / `system.launcher/launch`; shows each app's real icon fetched from the TV's self-signed HTTPS icon URL via a trust-all OkHttp loader (initials tile fallback) |
 | Multitasking overview + LG Home Hub shortcut | Yes | Apps tab "Multitasking" opens an in-app overview: live foreground app (`getForegroundAppInfo`, "On TV now") plus the last 8 launched apps as tappable icon cards that switch apps (verified Home Hub card → `com.webos.app.homeconnect`); the TV's native switcher stays available via the `RECENT` key in the NavBar and the overview footer. webOS 4.1 has no public `listRunning` endpoint (404), so the list is built from locally tracked launches, not a claim of live TV task state. |
+| Bluetooth-assisted discovery | Yes | BLE scan (`BLUETOOTH_SCAN` / `BLUETOOTH_CONNECT`, location on Android ≤ 11) finds nearby LG TVs by advertised name — verified `LG TV[[LG] webOS TV UR7500PSC]` at `04:70:56:B4:B9:C5`; BLE is combined with a LAN webOS-port scan and mDNS because BLE does not carry the TV's IP. Runtime permission + "Bluetooth is off" states handled explicitly. |
 | mDNS auto-discovery | Yes | `NsdManager` on `_airplay._tcp` / `_raop._tcp`, reads MAC from TXT `deviceid` |
+| DHCP IP-change recovery | Yes | if a remembered IP fails to connect, the app re-scans the LAN for webOS ports and retries with the new IP, carrying over the pairing key — verified stale `192.168.1.10` → auto-reconnect at `192.168.1.2`. `/proc/net/arp` is used only as best effort because Android can deny apps access to it. |
 | Wi-Fi signal + TV link latency | Yes | RSSI bars (1–5) and TCP connect timing to port 3001 |
 | Local app filtering | Yes | on-device filter of the TV's app list |
 | TV-wide search | Best effort | `com.webos.service.search/search`, then `com.webos.app.search` with a query param |
@@ -87,7 +90,9 @@ Other webOS versions may differ; the limitations below still apply.
   ignore the query parameter; in that case use the **Keyboard** tab while the TV
   search box is focused.
 - mDNS discovery depends on the TV advertising AirPlay 2 (`_airplay._tcp`). If
-  that service is disabled on the TV, use **Scan network** or manual IP entry.
+  that service is disabled on the TV, use **Bluetooth**, **Scan network**, or
+  manual IP entry. BLE only proves a TV is nearby — the LAN scan supplies the
+  IP — so both Wi‑Fi and (for discovery) Bluetooth must be available.
   Discovery runs for 6 seconds; Wi-Fi SSID is hidden by Android without a
   location permission, so the app shows signal bars and RSSI instead.
 - YouTube's custom on-screen keyboard silently ignores `insertText` on some

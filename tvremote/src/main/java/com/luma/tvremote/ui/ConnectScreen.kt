@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.luma.tvremote.net.BluetoothTvScanner
 
 @Composable
 fun ConnectScreen(
@@ -34,6 +35,7 @@ fun ConnectScreen(
     onConnect: () -> Unit,
     onScan: () -> Unit,
     onDiscover: () -> Unit,
+    onDiscoverBluetooth: () -> Unit,
     onPickHost: (String) -> Unit,
     onForget: (String) -> Unit,
     onToggleFavorite: (String) -> Unit,
@@ -137,12 +139,43 @@ fun ConnectScreen(
             ) {
                 Text(if (state.isScanning) "Scanning…" else "Scan network")
             }
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedButton(
+                onClick = onDiscoverBluetooth,
+                enabled = !state.isDiscoveringBluetooth,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(if (state.isDiscoveringBluetooth) "Scanning…" else "Bluetooth")
+            }
             OutlinedButton(
                 onClick = onDiscover,
                 enabled = !state.isDiscovering,
                 modifier = Modifier.weight(1f)
             ) {
                 Text(if (state.isDiscovering) "Finding…" else "mDNS")
+            }
+        }
+
+        state.bluetoothStatus?.let { status ->
+            Text(
+                text = status,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        if (state.bleDevices.isNotEmpty()) {
+            val tvLikes = state.bleDevices.filter { BluetoothTvScanner.looksLikeTv(it) }
+            if (tvLikes.isNotEmpty()) {
+                Text("Nearby Bluetooth devices", fontWeight = FontWeight.SemiBold)
+                tvLikes.take(6).forEach { device ->
+                    Text(
+                        text = "${device.name ?: "Unnamed"}  ·  ${device.address}  ·  ${device.rssi} dBm",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
         }
 
