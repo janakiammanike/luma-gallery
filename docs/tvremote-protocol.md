@@ -61,8 +61,7 @@ Other webOS versions may differ; the limitations below still apply.
 | Mouse cursor | Yes | `getPointerInputSocket` → `move`, `click`, `scroll` |
 | Keyboard typing | Yes | `com.webos.service.ime/insertText`, `sendEnterKey`, `deleteCharacters` |
 | Installed app list + launch | Yes | `listLaunchPoints` / `system.launcher/launch`; shows each app's real icon fetched from the TV's self-signed HTTPS icon URL via a trust-all OkHttp loader (initials tile fallback) |
-| Recent apps & LG Home Hub shortcuts | Yes | Apps tab quick-shortcut card: `RECENT` key opens the TV task switcher; `com.webos.app.homeconnect` launches LG Home Hub (verified foreground) |
-| Recently launched apps | Yes | last 8 launched apps stored per install, one-tap relaunch from the Apps tab |
+| Multitasking overview + LG Home Hub shortcut | Yes | Apps tab "Multitasking" opens an in-app overview: live foreground app (`getForegroundAppInfo`, "On TV now") plus the last 8 launched apps as tappable icon cards that switch apps (verified Home Hub card → `com.webos.app.homeconnect`); the TV's native switcher stays available via the `RECENT` key in the NavBar and the overview footer. webOS 4.1 has no public `listRunning` endpoint (404), so the list is built from locally tracked launches, not a claim of live TV task state. |
 | mDNS auto-discovery | Yes | `NsdManager` on `_airplay._tcp` / `_raop._tcp`, reads MAC from TXT `deviceid` |
 | Wi-Fi signal + TV link latency | Yes | RSSI bars (1–5) and TCP connect timing to port 3001 |
 | Local app filtering | Yes | on-device filter of the TV's app list |

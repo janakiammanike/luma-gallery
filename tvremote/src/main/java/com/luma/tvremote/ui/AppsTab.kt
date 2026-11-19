@@ -21,7 +21,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -63,47 +62,15 @@ fun AppsTab(vm: RemoteViewModel) {
                 Text("Quick shortcuts", fontWeight = FontWeight.SemiBold)
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
-                        onClick = vm::openRecentApps,
+                        onClick = vm::openMultitasking,
                         modifier = Modifier.weight(1f),
                         contentPadding = ButtonDefaults.TextButtonContentPadding
-                    ) { Text("⊞  Recent apps", style = MaterialTheme.typography.bodySmall) }
+                    ) { Text("⊞  Multitasking", style = MaterialTheme.typography.bodySmall) }
                     Button(
                         onClick = vm::openHomeHub,
                         modifier = Modifier.weight(1f),
                         contentPadding = ButtonDefaults.TextButtonContentPadding
                     ) { Text("⌂  LG Home Hub", style = MaterialTheme.typography.bodySmall) }
-                }
-            }
-        }
-
-        // Recently launched apps — one-tap relaunch.
-        if (state.recentApps.isNotEmpty()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("Recently launched", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        TextButton(onClick = vm::clearRecentApps) { Text("Clear") }
-                    }
-                    state.recentApps.chunked(2).forEach { row ->
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            row.forEach { (id, title) ->
-                                OutlinedButton(
-                                    onClick = { vm.launchApp(id, title) },
-                                    modifier = Modifier.weight(1f),
-                                    contentPadding = ButtonDefaults.TextButtonContentPadding
-                                ) {
-                                    Text(
-                                        title.take(22),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -176,7 +143,7 @@ fun AppsTab(vm: RemoteViewModel) {
 
 /** Async icon from the TV, with an initials tile as fallback. */
 @Composable
-private fun AppIcon(iconUrl: String?, title: String) {
+fun AppIcon(iconUrl: String?, title: String) {
     var bitmap by remember(iconUrl) { mutableStateOf<android.graphics.Bitmap?>(null) }
     LaunchedEffect(iconUrl) {
         bitmap = AppIconLoader.load(iconUrl)

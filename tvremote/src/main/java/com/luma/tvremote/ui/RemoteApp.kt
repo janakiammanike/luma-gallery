@@ -156,4 +156,8 @@ fun RemoteApp(vm: RemoteViewModel = viewModel()) {
     if (showSettings) {
         SettingsSheet(state = state, vm = vm, onDismiss = { showSettings = false })
     }
+
+    if (state.showMultitasking) {
+        MultitaskingDialog(vm = vm, state = state)
+    }
 }

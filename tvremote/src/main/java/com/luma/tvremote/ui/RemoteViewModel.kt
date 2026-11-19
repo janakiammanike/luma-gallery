@@ -53,6 +53,7 @@ data class RemoteUiState(
     val foregroundApp: String? = null,
     val recentSearches: List<String> = emptyList(),
     val recentApps: List<Pair<String, String>> = emptyList(),
+    val showMultitasking: Boolean = false,
     val darkTheme: Boolean = false,
     val haptics: Boolean = true,
     val castUrl: String? = null,
@@ -406,8 +407,31 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         runCommand { it.launchApp(id) }
     }
 
-    /** Open the TV's running-apps switcher (webOS Recent / task manager). */
+    /** Open the TV's native task switcher (webOS Recent key). */
     fun openRecentApps() = runCommand { it.button("RECENT") }
+
+    /** Open the in-app multitasking overview (recent apps + current TV app). */
+    fun openMultitasking() {
+        Haptics.tick(getApplication(), _ui.value.haptics)
+        _ui.update { it.copy(showMultitasking = true) }
+        viewModelScope.launch {
+            try {
+                client?.foregroundApp()?.let { app ->
+                    _ui.update { it.copy(foregroundApp = app) }
+                }
+            } catch (_: Exception) { /* keep last known foreground */ }
+        }
+    }
+
+    fun closeMultitasking() {
+        _ui.update { it.copy(showMultitasking = false) }
+    }
+
+    /** Switch to an app from the overview, then close the overview. */
+    fun switchToApp(id: String, title: String) {
+        closeMultitasking()
+        launchApp(id, title)
+    }
 
     /** One-tap shortcut to LG Home Hub (smart-home devices on the TV). */
     fun openHomeHub() = launchApp("com.webos.app.homeconnect", "Home Hub")
