@@ -85,6 +85,27 @@ class TvStore(context: Context) {
         prefs.edit().remove(KEY_RECENT_SEARCHES).apply()
     }
 
+    /** Recently launched TV apps as "id|title" strings, newest first. */
+    fun recentApps(): List<Pair<String, String>> =
+        prefs.getString(KEY_RECENT_APPS, null)
+            ?.split('|')
+            ?.mapNotNull { entry ->
+                val parts = entry.split('=', limit = 2)
+                if (parts.size == 2) parts[0] to parts[1] else null
+            }
+            ?.take(8) ?: emptyList()
+
+    fun addRecentApp(id: String, title: String) {
+        val entry = "$id=$title"
+        val next = (listOf(entry) + recentApps().map { "${it.first}=${it.second}" }
+            .filter { !it.startsWith("$id=") }).take(8)
+        prefs.edit().putString(KEY_RECENT_APPS, next.joinToString("|")).apply()
+    }
+
+    fun clearRecentApps() {
+        prefs.edit().remove(KEY_RECENT_APPS).apply()
+    }
+
     fun darkTheme(): Boolean = prefs.getBoolean(KEY_DARK_THEME, false)
 
     fun setDarkTheme(enabled: Boolean) {
@@ -102,6 +123,7 @@ class TvStore(context: Context) {
         const val KEY_LAST_HOST = "last_host"
         const val KEY_FAVORITES = "favorites"
         const val KEY_RECENT_SEARCHES = "recent_searches"
+        const val KEY_RECENT_APPS = "recent_apps"
         const val KEY_DARK_THEME = "dark_theme"
         const val KEY_HAPTICS = "haptics"
     }

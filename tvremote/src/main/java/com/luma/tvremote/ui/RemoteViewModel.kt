@@ -52,6 +52,7 @@ data class RemoteUiState(
     val soundOutput: String = "—",
     val foregroundApp: String? = null,
     val recentSearches: List<String> = emptyList(),
+    val recentApps: List<Pair<String, String>> = emptyList(),
     val darkTheme: Boolean = false,
     val haptics: Boolean = true,
     val castUrl: String? = null,
@@ -75,6 +76,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             }.toMap(),
             wifi = WifiStatus.read(application),
             recentSearches = store.recentSearches(),
+            recentApps = store.recentApps(),
             darkTheme = store.darkTheme(),
             haptics = store.haptics(),
             mediaAccessGranted = NowPlayingStore.isAccessGranted(application)
@@ -397,7 +399,23 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         if (count > 0) runCommand { it.deleteCharacters(count.coerceAtMost(20)) }
     }
 
-    fun launchApp(id: String) = runCommand { it.launchApp(id) }
+    /** Launch an app and remember it for the quick-relaunch list. */
+    fun launchApp(id: String, title: String = id) {
+        store.addRecentApp(id, title)
+        _ui.update { it.copy(recentApps = store.recentApps()) }
+        runCommand { it.launchApp(id) }
+    }
+
+    /** Open the TV's running-apps switcher (webOS Recent / task manager). */
+    fun openRecentApps() = runCommand { it.button("RECENT") }
+
+    /** One-tap shortcut to LG Home Hub (smart-home devices on the TV). */
+    fun openHomeHub() = launchApp("com.webos.app.homeconnect", "Home Hub")
+
+    fun clearRecentApps() {
+        store.clearRecentApps()
+        _ui.update { it.copy(recentApps = emptyList()) }
+    }
 
     fun tvSearch(query: String) {
         if (query.isBlank()) {

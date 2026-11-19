@@ -10,17 +10,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,7 +47,67 @@ fun AppsTab(vm: RemoteViewModel) {
             it.id.contains(query, ignoreCase = true)
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Quick shortcuts — recent apps switcher + LG Home Hub, always within reach.
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        ) {
+            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Quick shortcuts", fontWeight = FontWeight.SemiBold)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = vm::openRecentApps,
+                        modifier = Modifier.weight(1f),
+                        contentPadding = ButtonDefaults.TextButtonContentPadding
+                    ) { Text("⊞  Recent apps", style = MaterialTheme.typography.bodySmall) }
+                    Button(
+                        onClick = vm::openHomeHub,
+                        modifier = Modifier.weight(1f),
+                        contentPadding = ButtonDefaults.TextButtonContentPadding
+                    ) { Text("⌂  LG Home Hub", style = MaterialTheme.typography.bodySmall) }
+                }
+            }
+        }
+
+        // Recently launched apps — one-tap relaunch.
+        if (state.recentApps.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Recently launched", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        TextButton(onClick = vm::clearRecentApps) { Text("Clear") }
+                    }
+                    state.recentApps.chunked(2).forEach { row ->
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            row.forEach { (id, title) ->
+                                OutlinedButton(
+                                    onClick = { vm.launchApp(id, title) },
+                                    modifier = Modifier.weight(1f),
+                                    contentPadding = ButtonDefaults.TextButtonContentPadding
+                                ) {
+                                    Text(
+                                        title.take(22),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         OutlinedTextField(
             value = state.appQuery,
             onValueChange = vm::onAppQuery,
@@ -55,7 +118,7 @@ fun AppsTab(vm: RemoteViewModel) {
         )
 
         Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -77,18 +140,12 @@ fun AppsTab(vm: RemoteViewModel) {
                 },
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            return
-        }
-
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(apps, key = { it.id }) { app ->
+        } else {
+            apps.forEach { app ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { vm.launchApp(app.id) },
+                        .clickable { vm.launchApp(app.id, app.title) },
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Row(
@@ -121,7 +178,7 @@ fun AppsTab(vm: RemoteViewModel) {
 @Composable
 private fun AppIcon(iconUrl: String?, title: String) {
     var bitmap by remember(iconUrl) { mutableStateOf<android.graphics.Bitmap?>(null) }
-    androidx.compose.runtime.LaunchedEffect(iconUrl) {
+    LaunchedEffect(iconUrl) {
         bitmap = AppIconLoader.load(iconUrl)
     }
     Box(
