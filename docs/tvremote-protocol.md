@@ -51,7 +51,7 @@ Tested end-to-end on an **LG 55UR7500PSC** running **webOS 4.1.0**
 
 Other webOS versions may differ; the limitations below still apply.
 
-## What version 0.1.0 supports
+## What version 1.0.0 supports
 
 | Feature | Status | Implementation |
 | --- | --- | --- |
