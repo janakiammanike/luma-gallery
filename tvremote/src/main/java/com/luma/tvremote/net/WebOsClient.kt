@@ -18,7 +18,12 @@ import java.util.concurrent.atomic.AtomicInteger
 import javax.net.ssl.SSLContext
 import javax.net.ssl.X509TrustManager
 
-data class TvApp(val id: String, val title: String, val type: String)
+data class TvApp(
+    val id: String,
+    val title: String,
+    val type: String,
+    val icon: String? = null
+)
 
 /** MAC addresses reported by the TV, keyed by interface name (wired/wifi/p2p). */
 data class TvNetworkInfo(val macAddresses: Map<String, String>) {
@@ -175,7 +180,8 @@ class WebOsClient(
             result += TvApp(
                 id = id,
                 title = item.optString("title").ifBlank { id },
-                type = item.optString("appType").ifBlank { "app" }
+                type = item.optString("appType").ifBlank { "app" },
+                icon = item.optString("icon").ifBlank { null }
             )
         }
         return result.distinctBy { it.id }.sortedBy { it.title.lowercase() }

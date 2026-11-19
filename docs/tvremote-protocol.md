@@ -54,12 +54,13 @@ Other webOS versions may differ; the limitations below still apply.
 
 | Feature | Status | Implementation |
 | --- | --- | --- |
+| Persistent Home / Back / Recent / Menu bar | Yes | always-visible `NavBar` on Remote and Cursor tabs, so leaving an app (e.g. YouTube video → Home) needs no customization; `type:button` via input socket (Home verified → `com.webos.app.home`) |
 | D‑pad, Home, Back, Menu, Exit | Yes | pointer input socket `type:button` |
 | Volume, mute, channels, power off | Yes | SSAP audio/tv/system endpoints |
 | Play / pause / stop / rewind / fast forward | Yes | `media.controls/*` |
 | Mouse cursor | Yes | `getPointerInputSocket` → `move`, `click`, `scroll` |
 | Keyboard typing | Yes | `com.webos.service.ime/insertText`, `sendEnterKey`, `deleteCharacters` |
-| Installed app list + launch | Yes | `listLaunchPoints` / `system.launcher/launch` |
+| Installed app list + launch | Yes | `listLaunchPoints` / `system.launcher/launch`; shows each app's real icon fetched from the TV's self-signed HTTPS icon URL via a trust-all OkHttp loader (initials tile fallback) |
 | mDNS auto-discovery | Yes | `NsdManager` on `_airplay._tcp` / `_raop._tcp`, reads MAC from TXT `deviceid` |
 | Wi-Fi signal + TV link latency | Yes | RSSI bars (1–5) and TCP connect timing to port 3001 |
 | Local app filtering | Yes | on-device filter of the TV's app list |
