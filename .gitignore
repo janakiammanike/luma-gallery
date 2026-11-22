@@ -11,6 +11,9 @@ keystore.properties
 *.jks
 *.keystore
 
+# Companion local test artifacts
+tvcompanion/proxy_test_node.log
+
 # Local machine files
 local.properties
 .idea/

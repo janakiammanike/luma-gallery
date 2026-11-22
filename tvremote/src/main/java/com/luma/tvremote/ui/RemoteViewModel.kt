@@ -349,33 +349,43 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                 _ui.update {
                     it.copy(message = "${result.message} — looking for the TV on this Wi‑Fi…")
                 }
-                // The TV companion tells us the new IP directly; fall back to
-                // probing the subnet if the companion app isn't installed.
+                // The TV companion knows the current IP and can forward SSAP
+                // to the TV's own localhost even when this phone cannot reach
+                // ports 3000/3001 (AP isolation, firewall, etc.).
                 val companion = CompanionScanner.probe(requestedHost)
                     ?: CompanionScanner.listen(2_000)
-                val candidates = linkedSetOf<String>()
                 if (companion != null) {
-                    candidates.add(companion.host)
                     _ui.update {
                         it.copy(
                             companion = companion,
                             companionStatus = "Companion reports TV at ${companion.host}"
                         )
                     }
-                }
-                candidates.addAll(LanScanner.scan(getApplication()))
-                for (candidate in candidates) {
-                    if (candidate == host) continue
-                    if (store.keyFor(candidate).isNullOrBlank()) {
-                        store.keyFor(host)?.takeIf { it.isNotBlank() }
-                            ?.let { key -> store.saveKey(candidate, key) }
+                    val proxied = attemptConnect(companion.host, companion)
+                    if (proxied is ConnectResult.Success) {
+                        host = companion.host
+                        result = proxied
+                        moved = host != requestedHost
                     }
-                    val retry = attemptConnect(candidate)
-                    if (retry is ConnectResult.Success) {
-                        host = candidate
-                        result = retry
-                        moved = true
-                        break
+                }
+
+                if (result is ConnectResult.Failure) {
+                    val candidates = linkedSetOf<String>()
+                    if (companion != null) candidates.add(companion.host)
+                    candidates.addAll(LanScanner.scan(getApplication()))
+                    for (candidate in candidates) {
+                        if (candidate == host) continue
+                        if (store.keyFor(candidate).isNullOrBlank()) {
+                            store.keyFor(host)?.takeIf { it.isNotBlank() }
+                                ?.let { key -> store.saveKey(candidate, key) }
+                        }
+                        val retry = attemptConnect(candidate)
+                        if (retry is ConnectResult.Success) {
+                            host = candidate
+                            result = retry
+                            moved = true
+                            break
+                        }
                     }
                 }
             }
@@ -418,10 +428,15 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private suspend fun attemptConnect(host: String): ConnectResult {
+    private suspend fun attemptConnect(
+        host: String,
+        companion: CompanionBeacon? = null
+    ): ConnectResult {
         val newClient = WebOsClient(
             host = host,
             storedKey = store.keyFor(host),
+            proxyBaseUrl = companion?.let { "http://${it.host}:${CompanionScanner.STATUS_PORT}" },
+            initialProxyToken = companion?.token,
             onStatus = { status -> _ui.update { it.copy(status = status) } },
             onClientKey = { key -> store.saveKey(host, key) },
             onDisconnected = {

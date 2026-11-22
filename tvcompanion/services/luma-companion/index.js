@@ -14,6 +14,7 @@ var dgram = require('dgram');
 var os = require('os');
 var http = require('http');
 var crypto = require('crypto');
+var SimpleWs = require('./wsclient');
 
 var APP_ID = 'com.luma.tvcompanion';
 var SERVICE_ID = 'com.luma.tvcompanion.service';
@@ -25,6 +26,18 @@ var BROADCAST_ADDR = '255.255.255.255';
 
 var systemInfo = null;
 var bridge = null;
+
+// Local SSAP forwarder state (proxy phase). The phone sends a command over
+// HTTP; the TV executes it against its OWN SSAP server on 127.0.0.1:3000.
+var ssap = null;
+var inputWs = null;
+var pending = {};
+var sequence = 0;
+var registeredKey = null;
+var activeKey = null;
+var ssapRegistered = false;
+var ssapConnecting = false;
+var connectWaiters = [];
 
 try {
   var WebOsService = require('webos-service');
@@ -95,8 +108,180 @@ function status() {
     model: (systemInfo && (systemInfo.modelName || systemInfo.model)) || null,
     macs: macs(),
     token: tokenFor(ip, uuid),
+    clientKey: activeKey,
     ts: Date.now()
   };
+}
+
+function fail(reason) {
+  return { returnValue: false, errorText: String(reason) };
+}
+
+function disposeSsap() {
+  if (ssap) { try { ssap.close(); } catch (e) {} }
+  if (inputWs) { try { inputWs.close(); } catch (e) {} }
+  ssap = null;
+  inputWs = null;
+  pending = {};
+  registeredKey = null;
+  activeKey = null;
+  ssapRegistered = false;
+}
+
+/*
+ * Only ONE SSAP connection is opened. Callers that arrive while hello/register
+ * is still in flight are queued instead of sending too early — otherwise a
+ * rapid D-pad press gets a "not registered" rejection from the TV.
+ */
+function ensureSsap(key, callback) {
+  if (ssap && ssapRegistered) { callback(null); return; }
+  connectWaiters.push(callback);
+  if (ssapConnecting) return;
+  ssapConnecting = true;
+  disposeSsap();
+  registeredKey = key || null;
+
+  // A fresh pairing may wait for a human to approve the TV prompt.
+  var pairingTimer = setTimeout(function () {
+    finish(new Error('TV pairing timed out — approve the prompt on the TV'));
+  }, 90000);
+
+  var finished = false;
+  function finish(error) {
+    if (finished) return;
+    finished = true;
+    clearTimeout(pairingTimer);
+    ssapConnecting = false;
+    var waiters = connectWaiters;
+    connectWaiters = [];
+    for (var i = 0; i < waiters.length; i++) waiters[i](error);
+  }
+
+  var ws = new SimpleWs(3000, '/', {
+    open: function () {
+      ws.send(JSON.stringify({ id: 'hello', type: 'hello', payload: {} }));
+    },
+    message: function (text) {
+      var msg;
+      try { msg = JSON.parse(text); } catch (e) { return; }
+      if (msg.type === 'hello') {
+        ws.send(JSON.stringify({
+          id: 'register_0',
+          type: 'register',
+          payload: {
+            forcePairing: false,
+            manifest: { appVersion: '1.1', manifestVersion: 1, permissions: [] },
+            pairingType: 'PROMPT',
+            'client-key': registeredKey
+          }
+        }));
+        return;
+      }
+      if (msg.type === 'registered') {
+        ssapRegistered = true;
+        activeKey = registeredKey || (msg.payload && msg.payload['client-key']) || null;
+        finish(null);
+        return;
+      }
+      if (msg.type === 'response' || msg.type === 'error') {
+        var entry = pending[msg.id];
+        if (entry) {
+          clearTimeout(entry.timer);
+          delete pending[msg.id];
+          entry.callback(msg);
+        }
+      }
+    },
+    error: function (error) { finish(error); },
+    close: function () {
+      if (ssap === ws) {
+        ssap = null;
+        ssapRegistered = false;
+      }
+      finish(new Error('SSAP connection closed'));
+    }
+  });
+  ssap = ws;
+}
+
+function ssapRequest(uri, payload, key, callback) {
+  ensureSsap(key, function (error) {
+    if (error) { callback(fail(error)); return; }
+    var id = 'req_' + (++sequence);
+    var timer = setTimeout(function () {
+      if (pending[id]) {
+        delete pending[id];
+        callback(fail('SSAP request timed out'));
+      }
+    }, 20000);
+    pending[id] = {
+      timer: timer,
+      callback: function (message) {
+        callback(message.payload || fail('empty SSAP response'));
+      }
+    };
+    ssap.send(JSON.stringify({
+      id: id,
+      type: 'request',
+      uri: 'ssap://' + uri,
+      payload: payload || {}
+    }));
+  });
+}
+
+function ensureInput(callback, key) {
+  if (inputWs && inputWs.ready) { callback(null); return; }
+  ssapRequest('com.webos.service.networkinput/getPointerInputSocket', {}, key, function (payload) {
+    if (payload.returnValue === false || !payload.socketPath) {
+      callback(fail(payload.errorText || 'pointer input socket unavailable'));
+      return;
+    }
+    var pointer = new SimpleWs(3000, payload.socketPath, {
+      open: function () { callback(null); },
+      error: function (error) { callback(error); },
+      close: function () { if (inputWs === pointer) inputWs = null; }
+    });
+    inputWs = pointer;
+  });
+}
+
+function handleCommand(request, response) {
+  var body = '';
+  request.on('data', function (chunk) {
+    body += chunk.toString('utf8');
+    if (body.length > 16384) request.destroy();
+  });
+  request.on('end', function () {
+    var command;
+    try { command = JSON.parse(body); } catch (e) {
+      response.writeHead(400);
+      response.end('invalid JSON');
+      return;
+    }
+    var expected = status().token;
+    if (expected && command.token && command.token !== expected) {
+      response.writeHead(403);
+      response.end('bad token');
+      return;
+    }
+    function reply(payload) {
+      response.writeHead(200, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify(payload));
+    }
+    if (typeof command.input === 'string') {
+      ensureInput(function (error) {
+        if (error) { reply(fail(error)); return; }
+        inputWs.send(command.input);
+        reply({ returnValue: true });
+      }, command.key);
+      return;
+    }
+    if (typeof command.uri === 'string') {
+      ssapRequest(command.uri, command.payload, command.key, reply);
+      return;
+    }
+    reply(fail('uri or input required'));
+  });
 }
 
 var udp = dgram.createSocket('udp4');
@@ -109,7 +294,8 @@ udp.bind(function () {
 
 function broadcast() {
   var payload = status();
-  var buffer = new Buffer(JSON.stringify(payload));
+  var text = JSON.stringify(payload);
+  var buffer = typeof Buffer.from === 'function' ? Buffer.from(text) : new Buffer(text);
   try {
     udp.send(buffer, 0, buffer.length, BEACON_PORT, BROADCAST_ADDR, function () {});
   } catch (e) {}
@@ -127,6 +313,10 @@ broadcast();
 http.createServer(function (request, response) {
   var path = (request.url || '/').split('?')[0];
   response.setHeader('Access-Control-Allow-Origin', '*');
+  if (path === '/command' && request.method === 'POST') {
+    handleCommand(request, response);
+    return;
+  }
   if (path === '/health') {
     response.writeHead(200, { 'Content-Type': 'text/plain' });
     response.end('ok');

@@ -41,5 +41,6 @@ for member in ("control.tar.gz", "data.tar.gz"):
         else:
             assert any(n.endswith("appinfo.json") for n in names)
             assert any(n.endswith("services/luma-companion/index.js") for n in names)
+            assert any(n.endswith("services/luma-companion/wsclient.js") for n in names)
 
 print("IPK structure OK")

@@ -24,6 +24,7 @@ PAYLOAD_FILES = [
     "services/luma-companion/package.json",
     "services/luma-companion/services.json",
     "services/luma-companion/index.js",
+    "services/luma-companion/wsclient.js",
 ]
 
 

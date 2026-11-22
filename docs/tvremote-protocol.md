@@ -25,12 +25,35 @@ It needs no LG account and no internet — everything is local LAN.
   UDP datagram to `255.255.255.255:50550` every 2 seconds and also serves
   `GET http://<tv-ip>:8081/status`.
 - Beacon JSON: `app`, `protocol`, `version`, `ip`, `ports`, `uuid`, `model`,
-  `macs`, `token`, `ts`. The phone validates `app` before trusting the payload.
+  `macs`, `token`, `clientKey`, `ts`. The phone validates `app` before trusting
+  the payload.
 - The Android app's **TV app** button listens for this beacon (or probes the
   saved host) and fills in the correct IP. It is also consulted automatically
   when a saved IP fails, before falling back to a subnet scan.
 - This removes the dependency on mDNS/AirPlay, BLE being switched on, and
   `/proc/net/arp` access — the three weakest links found during testing.
+
+### Local control proxy
+
+The companion also removes the need for the phone to reach the TV's SSAP ports
+directly. `POST http://<tv-ip>:8081/command` accepts either:
+
+```json
+{ "token": "<from beacon>", "key": "<client-key>", "uri": "audio/getStatus", "payload": {} }
+{ "token": "<from beacon>", "key": "<client-key>", "input": "type:button\nname:RIGHT\n\n" }
+```
+
+The service connects to **its own localhost SSAP** (`127.0.0.1:3000`), reuses the
+phone's already-paired `client-key`, and forwards the command. Only one SSAP
+connection is kept open and callers arriving during `hello`/`register` are
+queued, so rapid D-pad presses cannot outrun pairing. The paired key is reported
+as `clientKey` in `/status` so the phone can persist it.
+
+On the phone, `WebOsClient` has a proxy mode: all 25 commands still call the
+same methods, but `request()`, `sendOnly()` and `sendInput()` go over HTTP to the
+companion instead of WebSockets. `connect()` tries direct SSAP first, then falls
+back to the companion proxy, then to a subnet scan. A failed direct connection
+costs about 2.5 s before the fallback starts.
 
 Build/install:
 
@@ -39,13 +62,16 @@ cd tvcompanion
 python make_icons.py
 python package_ipk.py      # -> com.luma.tvcompanion_1.0.0_all.ipk
 python verify_ipk.py       # checks ar + tar structure
+python test_proxy.py       # mock SSAP server; verifies beacon/status/proxy
 ```
 
 Install the `.ipk` with the LG webOS SDK (`ares-install`) while the TV's Dev
-Mode is active, or sideload it from USB. The beacon and `/status` endpoint were
-verified locally with Node + a UDP/HTTP probe; on-TV install verification is
-still pending because the TV was powered off (and its Dev Mode SSH port was not
-reachable) at the time of writing.
+Mode is active, or sideload it from USB. On this TV, Dev Mode SSH listens on
+**port 9922** (not 22) and uses the legacy `ssh-rsa` host key; modern OpenSSH
+needs `-o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa`.
+Verified locally with Node + mock SSAP: beacon, `/status`, `/command` URI and
+input forwarding, and an eight-request cold-start burst. On-TV install
+verification still needs the Dev Mode passphrase.
 
 ## Verified on real hardware
 

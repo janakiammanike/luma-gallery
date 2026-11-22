@@ -4,8 +4,10 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
@@ -51,9 +53,13 @@ class WebOsClient(
     private val storedKey: String?,
     private val onStatus: (String) -> Unit = {},
     private val onClientKey: (String) -> Unit = {},
-    private val onDisconnected: () -> Unit = {}
+    private val onDisconnected: () -> Unit = {},
+    /** Base URL of the TV companion proxy, e.g. http://192.168.1.2:8081. */
+    private val proxyBaseUrl: String? = null,
+    private val initialProxyToken: String? = null
 ) {
     private val counter = AtomicInteger(0)
+    private var proxyToken: String? = initialProxyToken
     private val pending = ConcurrentHashMap<String, CompletableDeferred<JSONObject>>()
 
     @Volatile
@@ -76,6 +82,25 @@ class WebOsClient(
 
     suspend fun connect(): ConnectResult = withContext(Dispatchers.IO) {
         try {
+            if (proxyBaseUrl != null) {
+                onStatus("Connecting through TV companion…")
+                httpClient = buildProxyClient()
+                val info = proxyGet("/status")
+                if (info.optString("app") != COMPANION_APP_ID) {
+                    error("The host is not running the Luma TV companion")
+                }
+                // The companion is authoritative for its own token and pairing
+                // key; the beacon may be a couple of seconds out of date.
+                info.optString("token").takeIf { it.isNotBlank() }?.let { proxyToken = it }
+                info.optString("clientKey").takeIf { it.isNotBlank() }?.let { key ->
+                    clientKey = key
+                    onClientKey(key)
+                }
+                connected = true
+                onStatus("Connected via TV companion")
+                return@withContext ConnectResult.Success(clientKey.orEmpty())
+            }
+
             onStatus("Connecting to $host…")
             val client = buildClient()
             httpClient = client
@@ -442,6 +467,18 @@ class WebOsClient(
         type: String = "request",
         timeoutMs: Long = REQUEST_TIMEOUT_MS
     ): JSONObject = withContext(Dispatchers.IO) {
+        if (proxyBaseUrl != null) {
+            val result = proxyCommand(
+                JSONObject()
+                    .put("uri", uri)
+                    .put("payload", JSONObject(payload))
+            )
+            // The companion returns the SSAP payload directly; wrap it so the
+            // existing response validation works unchanged.
+            return@withContext parseResponse(
+                JSONObject().put("type", "response").put("payload", result)
+            )
+        }
         val id = nextId()
         val deferred = CompletableDeferred<JSONObject>()
         pending[id] = deferred
@@ -461,6 +498,10 @@ class WebOsClient(
         payload: Map<String, Any?> = emptyMap(),
         type: String = "request"
     ) = withContext(Dispatchers.IO) {
+        if (proxyBaseUrl != null) {
+            proxyCommand(JSONObject().put("uri", uri).put("payload", JSONObject(payload)))
+            return@withContext
+        }
         val ws = mainSocket ?: throw IllegalStateException("Not connected")
         val message = JSONObject()
             .put("id", nextId())
@@ -509,8 +550,44 @@ class WebOsClient(
     }
 
     private suspend fun sendInput(text: String) = withContext(Dispatchers.IO) {
+        if (proxyBaseUrl != null) {
+            val result = proxyCommand(JSONObject().put("input", text))
+            if (!result.optBoolean("returnValue", false)) {
+                error(result.optString("errorText").ifBlank { "Companion input failed" })
+            }
+            return@withContext
+        }
         val ws = inputSocket ?: throw IllegalStateException("Input channel not ready")
         if (!ws.send(text)) error("Input channel is closed")
+    }
+
+    private suspend fun proxyGet(path: String): JSONObject = withContext(Dispatchers.IO) {
+        val client = httpClient ?: error("HTTP client not ready")
+        val request = Request.Builder().url(proxyBaseUrl!! + path).get().build()
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (!response.isSuccessful) error("Companion HTTP ${response.code}: ${body.take(120)}")
+            JSONObject(body)
+        }
+    }
+
+    private suspend fun proxyCommand(body: JSONObject): JSONObject = withContext(Dispatchers.IO) {
+        val client = httpClient ?: error("Not connected to the TV companion")
+        val json = body
+            .put("token", proxyToken.orEmpty())
+            .put("key", clientKey.orEmpty())
+            .toString()
+        val request = Request.Builder()
+            .url("$proxyBaseUrl/command")
+            .post(json.toRequestBody("application/json".toMediaType()))
+            .build()
+        client.newCall(request).execute().use { response ->
+            val text = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                error("Companion HTTP ${response.code}: ${text.take(120)}")
+            }
+            JSONObject(text)
+        }
     }
 
     private fun mainListener(opened: CompletableDeferred<Unit>) = object : WebSocketListener() {
@@ -624,6 +701,14 @@ class WebOsClient(
 
     private fun nextId(): String = "cmd_${counter.incrementAndGet()}"
 
+    /** HTTP-only client for the companion proxy; finite timeouts avoid hangs. */
+    private fun buildProxyClient(): OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        .readTimeout(REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        .writeTimeout(REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        .retryOnConnectionFailure(false)
+        .build()
+
     private fun buildClient(): OkHttpClient {
         val trustManager = object : X509TrustManager {
             override fun checkClientTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) = Unit
@@ -648,6 +733,7 @@ class WebOsClient(
         private const val REQUEST_TIMEOUT_MS = 20_000L
         private const val PAIR_TIMEOUT_MS = 90_000L
         private const val REGISTER_ID = "register_0"
+        private const val COMPANION_APP_ID = "com.luma.tvcompanion"
 
         private const val ENDPOINT_NETWORK_INFO = "com.webos.service.connectionmanager/getinfo"
         private const val ENDPOINT_INPUT_SOCKET = "com.webos.service.networkinput/getPointerInputSocket"
