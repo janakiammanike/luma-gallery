@@ -98,7 +98,7 @@ function tokenFor(ip, uuid) {
 function status() {
   var ip = localIp();
   var uuid = (systemInfo && (systemInfo.uuid || systemInfo.deviceId)) || null;
-  return {
+  var result = {
     app: APP_ID,
     protocol: 1,
     version: VERSION,
@@ -108,9 +108,12 @@ function status() {
     model: (systemInfo && (systemInfo.modelName || systemInfo.model)) || null,
     macs: macs(),
     token: tokenFor(ip, uuid),
-    clientKey: activeKey,
     ts: Date.now()
   };
+  // Omit the field entirely until paired: some JSON implementations turn a
+  // JSON null into the string "null", which the phone would save as a key.
+  if (activeKey && activeKey !== 'null') result.clientKey = activeKey;
+  return result;
 }
 
 function fail(reason) {
@@ -126,6 +129,12 @@ function disposeSsap() {
   registeredKey = null;
   activeKey = null;
   ssapRegistered = false;
+  if (inputConnecting) {
+    inputConnecting = false;
+    var stranded = inputWaiters;
+    inputWaiters = [];
+    for (var i = 0; i < stranded.length; i++) stranded[i](fail('SSAP connection reset'));
+  }
 }
 
 /*
@@ -229,17 +238,46 @@ function ssapRequest(uri, payload, key, callback) {
   });
 }
 
+var inputConnecting = false;
+var inputWaiters = [];
+
 function ensureInput(callback, key) {
   if (inputWs && inputWs.ready) { callback(null); return; }
+  inputWaiters.push(callback);
+  if (inputConnecting) return;
+  inputConnecting = true;
+
+  function finishInput(error) {
+    inputConnecting = false;
+    var waiters = inputWaiters;
+    inputWaiters = [];
+    for (var i = 0; i < waiters.length; i++) waiters[i](error);
+  }
+
   ssapRequest('com.webos.service.networkinput/getPointerInputSocket', {}, key, function (payload) {
     if (payload.returnValue === false || !payload.socketPath) {
-      callback(fail(payload.errorText || 'pointer input socket unavailable'));
+      finishInput(fail(payload.errorText || 'pointer input socket unavailable'));
       return;
     }
+    var finished = false;
     var pointer = new SimpleWs(3000, payload.socketPath, {
-      open: function () { callback(null); },
-      error: function (error) { callback(error); },
-      close: function () { if (inputWs === pointer) inputWs = null; }
+      open: function () {
+        if (finished) return;
+        finished = true;
+        finishInput(null);
+      },
+      error: function (error) {
+        if (finished) return;
+        finished = true;
+        finishInput(error);
+      },
+      close: function () {
+        if (inputWs === pointer) inputWs = null;
+        if (!finished) {
+          finished = true;
+          finishInput(new Error('pointer input socket closed'));
+        }
+      }
     });
     inputWs = pointer;
   });

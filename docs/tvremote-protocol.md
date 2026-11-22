@@ -70,8 +70,12 @@ Mode is active, or sideload it from USB. On this TV, Dev Mode SSH listens on
 **port 9922** (not 22) and uses the legacy `ssh-rsa` host key; modern OpenSSH
 needs `-o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa`.
 Verified locally with Node + mock SSAP: beacon, `/status`, `/command` URI and
-input forwarding, and an eight-request cold-start burst. On-TV install
-verification still needs the Dev Mode passphrase.
+input forwarding, and an eight-request cold-start burst. Also verified on the
+real phone (`com.luma.tvremote.debug`) against a mock companion running on the
+PC LAN address: the **TV app** button discovered the beacon and filled the IP,
+Connect fell back to the proxy, and D-pad/scroll/keyboard commands and app-list
+requests arrived at the mock TV SSAP. Only one pointer socket is opened even
+with rapid input. On-TV install verification still needs the Dev Mode passphrase.
 
 ## Verified on real hardware
 

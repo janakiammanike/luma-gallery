@@ -92,7 +92,11 @@ class WebOsClient(
                 // The companion is authoritative for its own token and pairing
                 // key; the beacon may be a couple of seconds out of date.
                 info.optString("token").takeIf { it.isNotBlank() }?.let { proxyToken = it }
-                info.optString("clientKey").takeIf { it.isNotBlank() }?.let { key ->
+                // Android's org.json can surface a JSON null as "null"; never
+                // persist that as a pairing key.
+                info.optString("clientKey").takeIf {
+                    it.isNotBlank() && it != "null"
+                }?.let { key ->
                     clientKey = key
                     onClientKey(key)
                 }

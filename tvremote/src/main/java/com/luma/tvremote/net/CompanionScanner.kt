@@ -84,8 +84,8 @@ object CompanionScanner {
                 host = host,
                 version = json.optString("version"),
                 token = json.optString("token"),
-                uuid = json.optString("uuid").takeIf { it.isNotBlank() },
-                model = json.optString("model").takeIf { it.isNotBlank() },
+                uuid = json.optString("uuid").takeIf { it.isNotBlank() && it != "null" },
+                model = json.optString("model").takeIf { it.isNotBlank() && it != "null" },
                 macs = json.optJSONArray("macs")?.let { array ->
                     (0 until array.length()).mapNotNull { index ->
                         array.optString(index).takeIf { it.isNotBlank() }
