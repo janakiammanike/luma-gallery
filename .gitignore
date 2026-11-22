@@ -13,6 +13,8 @@ keystore.properties
 
 # Companion local test artifacts
 tvcompanion/proxy_test_node.log
+__pycache__/
+*.pyc
 
 # Local machine files
 local.properties
