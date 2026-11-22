@@ -1,0 +1,8 @@
+{
+  "name": "com.luma.tvcompanion.service",
+  "version": "1.0.0",
+  "description": "Luma companion UDP beacon + local status endpoint",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {}
+}

@@ -36,6 +36,7 @@ fun ConnectScreen(
     onScan: () -> Unit,
     onDiscover: () -> Unit,
     onDiscoverBluetooth: () -> Unit,
+    onDiscoverCompanion: () -> Unit,
     onPickHost: (String) -> Unit,
     onForget: (String) -> Unit,
     onToggleFavorite: (String) -> Unit,
@@ -141,7 +142,14 @@ fun ConnectScreen(
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = onDiscoverCompanion,
+                enabled = !state.isDiscoveringCompanion,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(if (state.isDiscoveringCompanion) "Listening…" else "TV app")
+            }
             OutlinedButton(
                 onClick = onDiscoverBluetooth,
                 enabled = !state.isDiscoveringBluetooth,
@@ -156,6 +164,14 @@ fun ConnectScreen(
             ) {
                 Text(if (state.isDiscovering) "Finding…" else "mDNS")
             }
+        }
+
+        state.companionStatus?.let { status ->
+            Text(
+                text = status,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
 
         state.bluetoothStatus?.let { status ->

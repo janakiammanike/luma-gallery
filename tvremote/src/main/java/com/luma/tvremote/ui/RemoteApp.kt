@@ -143,6 +143,7 @@ fun RemoteApp(vm: RemoteViewModel = viewModel()) {
                 onScan = vm::scan,
                 onDiscover = vm::discoverMdns,
                 onDiscoverBluetooth = ::startBluetoothDiscovery,
+                onDiscoverCompanion = vm::discoverCompanion,
                 onPickHost = { vm.connect(it) },
                 onForget = vm::forgetHost,
                 onToggleFavorite = vm::toggleFavorite,

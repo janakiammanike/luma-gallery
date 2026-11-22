@@ -16,6 +16,37 @@ If the TV is on another subnet, scanning will not find it; enter the IP manually
 Some corporate/guest Wi‑Fi networks block client-to-client traffic — use a home
 network or disable AP isolation.
 
+## TV companion app (`tvcompanion/`)
+
+Optional webOS app that runs **on the TV** and makes discovery deterministic.
+It needs no LG account and no internet — everything is local LAN.
+
+- `services/luma-companion/index.js` broadcasts the TV's **current IP** as a
+  UDP datagram to `255.255.255.255:50550` every 2 seconds and also serves
+  `GET http://<tv-ip>:8081/status`.
+- Beacon JSON: `app`, `protocol`, `version`, `ip`, `ports`, `uuid`, `model`,
+  `macs`, `token`, `ts`. The phone validates `app` before trusting the payload.
+- The Android app's **TV app** button listens for this beacon (or probes the
+  saved host) and fills in the correct IP. It is also consulted automatically
+  when a saved IP fails, before falling back to a subnet scan.
+- This removes the dependency on mDNS/AirPlay, BLE being switched on, and
+  `/proc/net/arp` access — the three weakest links found during testing.
+
+Build/install:
+
+```powershell
+cd tvcompanion
+python make_icons.py
+python package_ipk.py      # -> com.luma.tvcompanion_1.0.0_all.ipk
+python verify_ipk.py       # checks ar + tar structure
+```
+
+Install the `.ipk` with the LG webOS SDK (`ares-install`) while the TV's Dev
+Mode is active, or sideload it from USB. The beacon and `/status` endpoint were
+verified locally with Node + a UDP/HTTP probe; on-TV install verification is
+still pending because the TV was powered off (and its Dev Mode SSH port was not
+reachable) at the time of writing.
+
 ## Verified on real hardware
 
 Tested end-to-end on an **LG 55UR7500PSC** running **webOS 4.1.0**

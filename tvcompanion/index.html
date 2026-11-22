@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Luma Companion</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <main class="card">
+    <div class="brand">LUMA <span>COMPANION</span></div>
+    <h1>TV discovery helper</h1>
+    <p class="sub">This app broadcasts the TV's current IP on the local network so the Luma Android remote can always find it — even after DHCP changes.</p>
+
+    <div class="grid">
+      <div class="item"><span class="label">TV IP</span><strong id="ip">—</strong></div>
+      <div class="item"><span class="label">Beacon</span><strong>UDP 50550</strong></div>
+      <div class="item"><span class="label">Status</span><strong>HTTP 8081</strong></div>
+      <div class="item"><span class="label">Version</span><strong id="version">1.0.0</strong></div>
+    </div>
+
+    <div class="status" id="status">Waiting for the companion service…</div>
+    <p class="hint">No internet, no LG account, no ThinQ cloud. Everything stays on your Wi‑Fi network.</p>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

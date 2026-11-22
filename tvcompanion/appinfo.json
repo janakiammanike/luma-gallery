@@ -1,0 +1,17 @@
+{
+  "id": "com.luma.tvcompanion",
+  "version": "1.0.0",
+  "vendor": "Luma",
+  "type": "web",
+  "main": "index.html",
+  "title": "Luma Companion",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "description": "Local LAN discovery beacon for the Luma Android TV remote (no cloud, no LG account).",
+  "services": [
+    {
+      "name": "com.luma.tvcompanion.service",
+      "uri": "services/luma-companion"
+    }
+  ]
+}

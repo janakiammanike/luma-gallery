@@ -9,6 +9,8 @@ import com.luma.tvremote.media.NowPlayingStore
 import com.luma.tvremote.net.ArpTvScanner
 import com.luma.tvremote.net.BleDevice
 import com.luma.tvremote.net.BluetoothTvScanner
+import com.luma.tvremote.net.CompanionBeacon
+import com.luma.tvremote.net.CompanionScanner
 import com.luma.tvremote.net.ConnectResult
 import com.luma.tvremote.net.DiscoveredTv
 import com.luma.tvremote.net.DlnaClient
@@ -39,6 +41,9 @@ data class RemoteUiState(
     val isDiscoveringBluetooth: Boolean = false,
     val bleDevices: List<BleDevice> = emptyList(),
     val bluetoothStatus: String? = null,
+    val isDiscoveringCompanion: Boolean = false,
+    val companion: CompanionBeacon? = null,
+    val companionStatus: String? = null,
     val wifi: WifiInfo? = null,
     val tvLatencyMs: Long? = null,
     val favorites: Set<String> = emptySet(),
@@ -158,6 +163,60 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     /**
+     * TV-side companion discovery. The TV broadcasts its current IP on UDP, so
+     * this works even when mDNS is disabled, Bluetooth is off, or the DHCP
+     * lease changed since the last connection.
+     */
+    fun discoverCompanion() {
+        viewModelScope.launch {
+            _ui.update {
+                it.copy(
+                    isDiscoveringCompanion = true,
+                    companionStatus = "Listening for the TV beacon…",
+                    message = null
+                )
+            }
+            var beacon = CompanionScanner.listen()
+            if (beacon == null) {
+                for (host in (listOfNotNull(_ui.value.connectedHost) + store.savedHosts())) {
+                    beacon = CompanionScanner.probe(host)
+                    if (beacon != null) break
+                }
+            }
+            if (beacon == null) {
+                _ui.update {
+                    it.copy(
+                        isDiscoveringCompanion = false,
+                        companionStatus = "No companion beacon found",
+                        message = "Install Luma Companion on the TV and keep both devices on the same Wi‑Fi."
+                    )
+                }
+                return@launch
+            }
+
+            val mac = beacon.macs.firstOrNull()
+            store.addHost(beacon.host)
+            store.setLastHost(beacon.host)
+            mac?.let { store.saveMac(beacon.host, it) }
+            val tv = DiscoveredTv(beacon.host, mac, beacon.model, "TV companion")
+
+            _ui.update { current ->
+                current.copy(
+                    isDiscoveringCompanion = false,
+                    companion = beacon,
+                    companionStatus = "Companion v${beacon.version} · TV at ${beacon.host}",
+                    hostInput = beacon.host,
+                    savedHosts = store.savedHosts(),
+                    mdnsHosts = (current.mdnsHosts + tv).distinctBy { it.host },
+                    detectedHosts = (current.detectedHosts + beacon.host).distinct(),
+                    hostMacs = mac?.let { current.hostMacs + (beacon.host to it) } ?: current.hostMacs,
+                    message = "TV companion found at ${beacon.host}. Tap Connect."
+                )
+            }
+        }
+    }
+
+    /**
      * Bluetooth-assisted discovery: BLE finds nearby devices, ARP turns a known
      * / LG MAC into the TV's CURRENT LAN IP, and each candidate is confirmed by
      * probing the webOS ports. This survives DHCP IP changes that break mDNS.
@@ -171,6 +230,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                     message = null
                 )
             }
+            val companion = CompanionScanner.listen(2_000)
             val ble = BluetoothTvScanner.scan(getApplication())
             // ARP is best effort (Android may block /proc/net/arp), so the
             // dependable step is probing the local /24 for webOS ports.
@@ -184,7 +244,11 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             val bleMacs = ble.devices.map { it.address }.toSet()
             val arpTvs = ArpTvScanner.scan(knownMacs, bleMacs)
             val mdnsTvs = MdnsScanner.scan(getApplication())
-            val merged = (lanTvs + arpTvs + mdnsTvs).distinctBy { it.host }
+            val companionTv = companion?.let {
+                DiscoveredTv(it.host, it.macs.firstOrNull(), it.model, "TV companion")
+            }
+            val merged = (listOfNotNull(companionTv) + lanTvs + arpTvs + mdnsTvs)
+                .distinctBy { it.host }
 
             merged.forEach { tv ->
                 tv.mac?.let { store.saveMac(tv.host, it) }
@@ -208,6 +272,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                             append("BLE ${ble.devices.size} device(s)")
                             if (tvLikes.isNotEmpty()) append(" · ${tvLikes.size} TV-like")
                             append(" · LAN ${lanTvs.size} TV(s)")
+                            if (companion != null) append(" · Companion ${companion.host}")
                         }
                     },
                     message = if (merged.isEmpty()) {
@@ -284,7 +349,22 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                 _ui.update {
                     it.copy(message = "${result.message} — looking for the TV on this Wi‑Fi…")
                 }
-                for (candidate in LanScanner.scan(getApplication())) {
+                // The TV companion tells us the new IP directly; fall back to
+                // probing the subnet if the companion app isn't installed.
+                val companion = CompanionScanner.probe(requestedHost)
+                    ?: CompanionScanner.listen(2_000)
+                val candidates = linkedSetOf<String>()
+                if (companion != null) {
+                    candidates.add(companion.host)
+                    _ui.update {
+                        it.copy(
+                            companion = companion,
+                            companionStatus = "Companion reports TV at ${companion.host}"
+                        )
+                    }
+                }
+                candidates.addAll(LanScanner.scan(getApplication()))
+                for (candidate in candidates) {
                     if (candidate == host) continue
                     if (store.keyFor(candidate).isNullOrBlank()) {
                         store.keyFor(host)?.takeIf { it.isNotBlank() }

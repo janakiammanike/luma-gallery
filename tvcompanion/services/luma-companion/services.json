@@ -1,0 +1,9 @@
+{
+  "services": [
+    {
+      "name": "com.luma.tvcompanion.service",
+      "description": "Broadcasts the TV's current LAN IP and answers local status requests",
+      "uri": "index.js"
+    }
+  ]
+}
