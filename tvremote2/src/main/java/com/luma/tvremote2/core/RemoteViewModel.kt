@@ -259,14 +259,14 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
         command {
-            platform.playMediaUrl(url)
-            _ui.update { it.copy(message = "Sent media URL to the TV player") }
+            val result = platform.playMediaUrl(url)
+            _ui.update { it.copy(message = result) }
         }
     }
 
     fun openMirroring() = command {
-        platform.openScreenMirroring()
-        _ui.update { it.copy(message = "Opened screen mirroring on the TV") }
+        val result = platform.openScreenMirroring()
+        _ui.update { it.copy(message = result) }
     }
 
     private fun command(block: suspend () -> Unit) {

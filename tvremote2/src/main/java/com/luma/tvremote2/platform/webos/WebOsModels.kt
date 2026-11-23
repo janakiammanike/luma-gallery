@@ -43,8 +43,8 @@ interface WebOsPlatform {
     suspend fun searchOnTv(query: String): String
     suspend fun openAppSearch(appId: String, query: String): String
     suspend fun selectInput(inputAppId: String)
-    suspend fun playMediaUrl(url: String)
-    suspend fun openScreenMirroring()
+    suspend fun playMediaUrl(url: String): String
+    suspend fun openScreenMirroring(): String
 
     suspend fun audioVolume(): Int?
     suspend fun volumeUp()

@@ -440,37 +440,17 @@ class DirectWebOsPlatform(
         request(WebOsProtocol.ENDPOINT_LAUNCH_APP, mapOf("id" to inputAppId))
     }
 
-    override suspend fun playMediaUrl(url: String) {
-        val mediaApp = apps().firstOrNull {
-            it.id.contains("mediadiscovery", ignoreCase = true) ||
-                it.title.contains("media", ignoreCase = true)
-        }?.id ?: "com.webos.app.mediadiscovery"
-        try {
-            request(
-                WebOsProtocol.ENDPOINT_LAUNCH_APP,
-                mapOf("id" to mediaApp, "params" to mapOf("uri" to url, "mediaUrl" to url)),
-                timeoutMs = 4_000
-            )
-        } catch (e: Exception) {
-            error("Could not open the TV media player: ${e.message ?: "launch failed"}")
-        }
-    }
+    override suspend fun playMediaUrl(url: String): String = WebOsOptionalFeatures.playMediaUrl(
+        request = { uri, payload, timeout -> request(uri, payload, timeoutMs = timeout) },
+        apps = { apps() },
+        url = url
+    )
 
-    override suspend fun openScreenMirroring() {
-        val candidate = apps().firstOrNull {
-            it.id.contains("mirror", ignoreCase = true) ||
-                it.title.contains("mirror", ignoreCase = true)
-        } ?: error("No screen mirroring app is installed on this TV")
-        try {
-            request(
-                WebOsProtocol.ENDPOINT_LAUNCH_APP,
-                mapOf("id" to candidate.id),
-                timeoutMs = 4_000
-            )
-        } catch (e: Exception) {
-            error("Could not open ${candidate.title}: ${e.message ?: "launch failed"}")
-        }
-    }
+    override suspend fun openScreenMirroring(): String =
+        WebOsOptionalFeatures.openScreenMirroring(
+            request = { uri, payload, timeout -> request(uri, payload, timeoutMs = timeout) },
+            apps = { apps() }
+        )
 
     override suspend fun audioVolume(): Int? {
         val payload = request(WebOsProtocol.ENDPOINT_AUDIO_STATUS)
