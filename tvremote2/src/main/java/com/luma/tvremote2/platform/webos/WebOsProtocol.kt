@@ -28,6 +28,11 @@ object WebOsProtocol {
     const val ENDPOINT_VOLUME_UP = "audio/volumeUp"
     const val ENDPOINT_VOLUME_DOWN = "audio/volumeDown"
     const val ENDPOINT_SET_MUTE = "audio/setMute"
+    const val ENDPOINT_MEDIA_PLAY = "media.controls/play"
+    const val ENDPOINT_MEDIA_PAUSE = "media.controls/pause"
+    const val ENDPOINT_MEDIA_STOP = "media.controls/stop"
+    const val ENDPOINT_MEDIA_REWIND = "media.controls/rewind"
+    const val ENDPOINT_MEDIA_FORWARD = "media.controls/fastForward"
 
     // Input socket frames are newline-delimited text, not JSON.
     const val FRAME_BUTTON = "type:button\nname:%s\n\n"

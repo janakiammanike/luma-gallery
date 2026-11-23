@@ -95,6 +95,13 @@ class SecureTvStore(context: Context) {
 
     fun airAxisSignY(): Int = prefs.getInt(KEY_AIR_AXIS_SIGN_Y, 1)
 
+    fun visibleGroups(): Set<String> =
+        prefs.getStringSet(KEY_VISIBLE_GROUPS, null)?.toSet() ?: DEFAULT_VISIBLE_GROUPS
+
+    fun setVisibleGroups(groups: Set<String>) {
+        prefs.edit().putStringSet(KEY_VISIBLE_GROUPS, groups).apply()
+    }
+
     fun shakeToCenter(): Boolean = prefs.getBoolean(KEY_SHAKE_TO_CENTER, false)
 
     fun setShakeToCenter(enabled: Boolean) {
@@ -120,8 +127,12 @@ class SecureTvStore(context: Context) {
             .apply()
     }
 
-    private companion object {
-        const val PREFS_NAME = "luma_tv_remote_2_secure"
+    companion object {
+        val DEFAULT_VISIBLE_GROUPS = setOf(
+            "system", "dpad", "scroll", "volume", "playback", "power"
+        )
+
+        private const val PREFS_NAME = "luma_tv_remote_2_secure"
         const val KEY_LAST_HOST = "last_host"
         const val KEY_DARK_THEME = "dark_theme"
         const val KEY_HAPTICS = "haptics"
@@ -136,5 +147,6 @@ class SecureTvStore(context: Context) {
         const val KEY_AIR_AXIS_SIGN_X = "air_axis_sign_x"
         const val KEY_AIR_AXIS_SIGN_Y = "air_axis_sign_y"
         const val KEY_SHAKE_TO_CENTER = "shake_to_center"
+        private const val KEY_VISIBLE_GROUPS = "visible_groups"
     }
 }

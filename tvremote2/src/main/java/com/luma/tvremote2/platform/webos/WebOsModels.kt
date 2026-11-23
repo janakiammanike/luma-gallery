@@ -54,4 +54,11 @@ interface WebOsPlatform {
     suspend fun channelDown()
     suspend fun powerOff()
     suspend fun powerOn()
+
+    // Media playback (verified media.controls endpoints from the legacy client)
+    suspend fun mediaPlay()
+    suspend fun mediaPause()
+    suspend fun mediaStop()
+    suspend fun mediaRewind()
+    suspend fun mediaFastForward()
 }

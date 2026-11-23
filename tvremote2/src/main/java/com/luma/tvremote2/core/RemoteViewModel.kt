@@ -44,6 +44,7 @@ data class RemoteUiState(
     val airMouseSensitivity: Float = 1f,
     val airMouseInvertX: Boolean = false,
     val airMouseInvertY: Boolean = false,
+    val visibleGroups: Set<String> = SecureTvStore.DEFAULT_VISIBLE_GROUPS,
     val message: String? = null
 )
 
@@ -64,7 +65,8 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             airMouseEnabled = store.airMouseEnabled(),
             airMouseSensitivity = store.airMouseSensitivity(),
             airMouseInvertX = store.airMouseInvertX(),
-            airMouseInvertY = store.airMouseInvertY()
+            airMouseInvertY = store.airMouseInvertY(),
+            visibleGroups = store.visibleGroups()
         )
     )
     val ui: StateFlow<RemoteUiState> = _ui.asStateFlow()
@@ -108,6 +110,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     )
 
     init {
+        Haptics.init(getApplication())
         airMouse.configure(
             store.airMouseSensitivity(),
             store.airMouseInvertX(),
@@ -150,10 +153,6 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
 
     fun consumeMessage() {
         _ui.update { it.copy(message = null) }
-    }
-
-    fun reportPending(feature: String) {
-        _ui.update { it.copy(message = "$feature migrates in a later phase") }
     }
 
     /** Beacon first; if absent, scan the local network for webOS ports. */
@@ -592,11 +591,46 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         _ui.update { it.copy(message = result) }
     }
 
+    /** The Apps screen reuses its filter field as a TV search query. */
+    fun searchTvFor(query: String) {
+        val text = query.trim()
+        if (text.isBlank()) {
+            _ui.update { it.copy(message = "Type a word in Filter apps first") }
+            return
+        }
+        searchTv(text)
+    }
+
+    private fun searchTv(query: String) {
+        command {
+            val result = platform.searchOnTv(query)
+            _ui.update { it.copy(message = result) }
+        }
+    }
+
+    fun toggleGroup(group: String) {
+        val current = _ui.value.visibleGroups
+        val updated = if (group in current) current - group else current + group
+        if (updated.isEmpty()) {
+            _ui.update { it.copy(message = "Keep at least one button group visible") }
+            return
+        }
+        store.setVisibleGroups(updated)
+        _ui.update { it.copy(visibleGroups = updated) }
+    }
+
+    fun play() = command { platform.mediaPlay() }
+    fun pause() = command { platform.mediaPause() }
+    fun stop() = command { platform.mediaStop() }
+    fun rewind() = command { platform.mediaRewind() }
+    fun fastForward() = command { platform.mediaFastForward() }
+
     private fun command(block: suspend () -> Unit) {
         if (!platform.isConnected()) {
             _ui.update { it.copy(message = "Not connected to a TV") }
             return
         }
+        Haptics.tick(_ui.value.haptics)
         viewModelScope.launch {
             runCatching { block() }.onFailure { error ->
                 val lost = error is IllegalStateException &&

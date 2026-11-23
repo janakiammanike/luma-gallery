@@ -9,6 +9,11 @@ import com.luma.tvremote2.platform.webos.WebOsProtocol.ENDPOINT_DELETE_CHARS
 import com.luma.tvremote2.platform.webos.WebOsProtocol.ENDPOINT_INSERT_TEXT
 import com.luma.tvremote2.platform.webos.WebOsProtocol.ENDPOINT_LAUNCH_APP
 import com.luma.tvremote2.platform.webos.WebOsProtocol.ENDPOINT_LAUNCH_POINTS
+import com.luma.tvremote2.platform.webos.WebOsProtocol.ENDPOINT_MEDIA_FORWARD
+import com.luma.tvremote2.platform.webos.WebOsProtocol.ENDPOINT_MEDIA_PAUSE
+import com.luma.tvremote2.platform.webos.WebOsProtocol.ENDPOINT_MEDIA_PLAY
+import com.luma.tvremote2.platform.webos.WebOsProtocol.ENDPOINT_MEDIA_REWIND
+import com.luma.tvremote2.platform.webos.WebOsProtocol.ENDPOINT_MEDIA_STOP
 import com.luma.tvremote2.platform.webos.WebOsProtocol.ENDPOINT_SEND_ENTER
 import com.luma.tvremote2.platform.webos.WebOsProtocol.ENDPOINT_SET_MUTE
 import com.luma.tvremote2.platform.webos.WebOsProtocol.ENDPOINT_VOLUME_DOWN
@@ -236,4 +241,10 @@ class LgWebOsPlatform(
     override suspend fun channelDown() { request("tv/channelDown") }
     override suspend fun powerOff() { request("system/turnOff") }
     override suspend fun powerOn() { request("system/turnOn") }
+
+    override suspend fun mediaPlay() { request(ENDPOINT_MEDIA_PLAY) }
+    override suspend fun mediaPause() { request(ENDPOINT_MEDIA_PAUSE) }
+    override suspend fun mediaStop() { request(ENDPOINT_MEDIA_STOP) }
+    override suspend fun mediaRewind() { request(ENDPOINT_MEDIA_REWIND) }
+    override suspend fun mediaFastForward() { request(ENDPOINT_MEDIA_FORWARD) }
 }

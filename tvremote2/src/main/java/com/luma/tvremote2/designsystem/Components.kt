@@ -37,13 +37,3 @@ fun SectionCard(
     }
 }
 
-/** Placeholder body for features whose logic is scheduled for Phase 2. */
-@Composable
-fun PendingFeatureNote(feature: String) {
-    Text(
-        text = "$feature — UI shell ready. Logic migrates in the next phase.",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 8.dp)
-    )
-}

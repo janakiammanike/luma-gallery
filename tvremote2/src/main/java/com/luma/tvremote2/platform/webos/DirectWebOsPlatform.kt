@@ -469,6 +469,12 @@ class DirectWebOsPlatform(
     override suspend fun powerOff() { request("system/turnOff") }
     override suspend fun powerOn() { request("system/turnOn") }
 
+    override suspend fun mediaPlay() { request(WebOsProtocol.ENDPOINT_MEDIA_PLAY) }
+    override suspend fun mediaPause() { request(WebOsProtocol.ENDPOINT_MEDIA_PAUSE) }
+    override suspend fun mediaStop() { request(WebOsProtocol.ENDPOINT_MEDIA_STOP) }
+    override suspend fun mediaRewind() { request(WebOsProtocol.ENDPOINT_MEDIA_REWIND) }
+    override suspend fun mediaFastForward() { request(WebOsProtocol.ENDPOINT_MEDIA_FORWARD) }
+
     companion object {
         private const val CONNECT_TIMEOUT_MS = 3_000L
         private const val REQUEST_TIMEOUT_MS = 15_000L

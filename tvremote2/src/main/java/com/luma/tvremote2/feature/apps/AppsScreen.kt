@@ -51,7 +51,10 @@ fun AppsScreen(vm: RemoteViewModel, modifier: Modifier = Modifier) {
                 singleLine = true
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { vm.reportPending("Search TV") }, modifier = Modifier.weight(1f)) {
+                OutlinedButton(
+                    onClick = { vm.searchTvFor(filter) },
+                    modifier = Modifier.weight(1f)
+                ) {
                     Text("Search TV")
                 }
                 OutlinedButton(onClick = vm::loadApps, modifier = Modifier.weight(1f)) {
@@ -67,6 +70,13 @@ fun AppsScreen(vm: RemoteViewModel, modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            state.message?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
 
         apps.forEach { app ->
