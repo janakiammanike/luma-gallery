@@ -40,7 +40,11 @@ import com.luma.tvremote2.designsystem.SectionCard
 import kotlin.math.roundToInt
 
 @Composable
-fun CursorScreen(vm: RemoteViewModel, modifier: Modifier = Modifier) {
+fun CursorScreen(
+    vm: RemoteViewModel,
+    onCalibration: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val context = LocalContext.current
     val touchSlop = remember { ViewConfiguration.get(context).scaledTouchSlop }
     val state by vm.ui.collectAsState()
@@ -119,6 +123,12 @@ fun CursorScreen(vm: RemoteViewModel, modifier: Modifier = Modifier) {
                 ) {
                     Text("Air click")
                 }
+            }
+            OutlinedButton(
+                onClick = onCalibration,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+            ) {
+                Text("Open calibration wizard")
             }
 
             Text(
@@ -254,6 +264,12 @@ fun CursorScreen(vm: RemoteViewModel, modifier: Modifier = Modifier) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("▼  Scroll down")
+                }
+                OutlinedButton(
+                    onClick = vm::recenter,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Recenter cursor (edge bump)")
                 }
             }
         }

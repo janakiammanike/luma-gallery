@@ -83,6 +83,43 @@ class SecureTvStore(context: Context) {
             .apply()
     }
 
+    fun airGainX(): Float = prefs.getFloat(KEY_AIR_GAIN_X, 1f)
+
+    fun airGainY(): Float = prefs.getFloat(KEY_AIR_GAIN_Y, 1f)
+
+    fun airSpanX(): Int = prefs.getInt(KEY_AIR_SPAN_X, 0)
+
+    fun airSpanY(): Int = prefs.getInt(KEY_AIR_SPAN_Y, 0)
+
+    fun airAxisSignX(): Int = prefs.getInt(KEY_AIR_AXIS_SIGN_X, 1)
+
+    fun airAxisSignY(): Int = prefs.getInt(KEY_AIR_AXIS_SIGN_Y, 1)
+
+    fun shakeToCenter(): Boolean = prefs.getBoolean(KEY_SHAKE_TO_CENTER, false)
+
+    fun setShakeToCenter(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_SHAKE_TO_CENTER, enabled).apply()
+    }
+
+    /** Saves everything the guided calibration produces. */
+    fun saveAirCalibration(
+        gainX: Float,
+        gainY: Float,
+        spanX: Int,
+        spanY: Int,
+        signX: Int,
+        signY: Int
+    ) {
+        prefs.edit()
+            .putFloat(KEY_AIR_GAIN_X, gainX)
+            .putFloat(KEY_AIR_GAIN_Y, gainY)
+            .putInt(KEY_AIR_SPAN_X, spanX)
+            .putInt(KEY_AIR_SPAN_Y, spanY)
+            .putInt(KEY_AIR_AXIS_SIGN_X, signX)
+            .putInt(KEY_AIR_AXIS_SIGN_Y, signY)
+            .apply()
+    }
+
     private companion object {
         const val PREFS_NAME = "luma_tv_remote_2_secure"
         const val KEY_LAST_HOST = "last_host"
@@ -92,5 +129,12 @@ class SecureTvStore(context: Context) {
         const val KEY_AIR_MOUSE_SENSITIVITY = "air_mouse_sensitivity"
         const val KEY_AIR_MOUSE_INVERT_X = "air_mouse_invert_x"
         const val KEY_AIR_MOUSE_INVERT_Y = "air_mouse_invert_y"
+        const val KEY_AIR_GAIN_X = "air_gain_x"
+        const val KEY_AIR_GAIN_Y = "air_gain_y"
+        const val KEY_AIR_SPAN_X = "air_span_x"
+        const val KEY_AIR_SPAN_Y = "air_span_y"
+        const val KEY_AIR_AXIS_SIGN_X = "air_axis_sign_x"
+        const val KEY_AIR_AXIS_SIGN_Y = "air_axis_sign_y"
+        const val KEY_SHAKE_TO_CENTER = "shake_to_center"
     }
 }

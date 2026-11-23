@@ -28,6 +28,7 @@ import com.luma.tvremote2.core.Routes
 import com.luma.tvremote2.core.RemoteViewModel
 import com.luma.tvremote2.core.primaryNavItems
 import com.luma.tvremote2.feature.apps.AppsScreen
+import com.luma.tvremote2.feature.calibration.CalibrationScreen
 import com.luma.tvremote2.feature.cast.CastScreen
 import com.luma.tvremote2.feature.connect.ConnectScreen
 import com.luma.tvremote2.feature.cursor.CursorScreen
@@ -90,7 +91,8 @@ fun RemoteApp(vm: RemoteViewModel) {
                         val current = nav.currentDestination?.route
                         NavigationBarItem(
                             selected = current == item.route ||
-                                (item.route == Routes.MORE && current in moreRoutes),
+                                (item.route == Routes.MORE && current in moreRoutes) ||
+                                (item.route == Routes.CURSOR && current == Routes.CALIBRATION),
                             onClick = {
                                 if (item.route == Routes.MORE) {
                                     showMore = true
@@ -116,7 +118,12 @@ fun RemoteApp(vm: RemoteViewModel) {
         ) {
             composable(Routes.CONNECT) { ConnectScreen(vm, onConnected = { nav.navigate(Routes.REMOTE) }) }
             composable(Routes.REMOTE) { RemoteScreen(vm) }
-            composable(Routes.CURSOR) { CursorScreen(vm) }
+            composable(Routes.CURSOR) {
+                CursorScreen(vm, onCalibration = { nav.navigate(Routes.CALIBRATION) })
+            }
+            composable(Routes.CALIBRATION) {
+                CalibrationScreen(vm, onDone = { nav.popBackStack() })
+            }
             composable(Routes.KEYBOARD) { KeyboardScreen(vm) }
             composable(Routes.APPS) { AppsScreen(vm) }
             composable(Routes.INPUTS) { InputsScreen(vm) }

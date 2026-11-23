@@ -5,6 +5,7 @@ object Routes {
     const val CONNECT = "connect"
     const val REMOTE = "remote"
     const val CURSOR = "cursor"
+    const val CALIBRATION = "calibration"
     const val KEYBOARD = "keyboard"
     const val APPS = "apps"
     const val MORE = "more"
