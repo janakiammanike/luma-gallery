@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.luma.tvremote2.data.SecureTvStore
 import com.luma.tvremote2.network.CompanionScanner
+import com.luma.tvremote2.network.TvScanner
+import com.luma.tvremote2.platform.webos.DirectWebOsPlatform
 import com.luma.tvremote2.platform.webos.LgWebOsPlatform
 import com.luma.tvremote2.platform.webos.WebOsApp
 import com.luma.tvremote2.platform.webos.WebOsDevice
@@ -27,13 +29,18 @@ data class RemoteUiState(
     val apps: List<WebOsApp> = emptyList(),
     val audioVolume: Int? = null,
     val audioMuted: Boolean = false,
+    val connectionMode: String? = null,
     val message: String? = null
 )
 
-/** Drives the shell and, from Phase 2A, real LG commands over the companion proxy. */
+/** Drives the shell and real LG commands (companion proxy or direct SSAP). */
 class RemoteViewModel(application: Application) : AndroidViewModel(application) {
     private val store = SecureTvStore(application)
-    private val platform: WebOsPlatform = LgWebOsPlatform(store)
+    private val companionPlatform: WebOsPlatform = LgWebOsPlatform(store)
+    private val directPlatform = DirectWebOsPlatform(store) { status ->
+        _ui.update { it.copy(status = status) }
+    }
+    private var platform: WebOsPlatform = companionPlatform
 
     private val _ui = MutableStateFlow(
         RemoteUiState(
@@ -60,25 +67,29 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         _ui.update { it.copy(message = "$feature migrates in a later phase") }
     }
 
-    /** Looks for the TV companion beacon on the LAN. */
+    /** Beacon first; if absent, scan the local network for webOS ports. */
     fun discoverCompanion() {
         viewModelScope.launch {
-            _ui.update { it.copy(status = "Looking for TV companion…") }
-            val beacon = CompanionScanner.listen()
-            if (beacon == null) {
+            _ui.update { it.copy(status = "Looking for TV…") }
+            val found = TvScanner.find()
+            if (found == null) {
                 _ui.update {
                     it.copy(
                         status = "Not connected",
-                        message = "No companion beacon found. Enter the TV IP manually."
+                        message = "No TV found on this network. Enter the TV IP manually."
                     )
                 }
             } else {
                 _ui.update {
                     it.copy(
-                        detectedHost = beacon.host,
-                        hostInput = beacon.host,
-                        status = "Found TV · ${beacon.host}",
-                        message = "Found TV companion at ${beacon.host}"
+                        detectedHost = found.host,
+                        hostInput = found.host,
+                        status = "Found TV · ${found.host}",
+                        message = if (found.viaCompanion) {
+                            "Found TV companion at ${found.host}"
+                        } else {
+                            "Found TV at ${found.host} (direct SSAP)"
+                        }
                     )
                 }
             }
@@ -95,16 +106,23 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         }
         viewModelScope.launch {
             _ui.update { it.copy(isConnecting = true, status = "Connecting…", message = null) }
-            val device = WebOsDevice(host = host, viaCompanion = true)
-            val result = platform.connect(device)
+            // Prefer the companion proxy; fall back to direct SSAP when the
+            // companion app is not running (which is the current TV state).
+            val viaCompanion = CompanionScanner.probe(host) != null
+            val chosen: WebOsPlatform = if (viaCompanion) companionPlatform else directPlatform
+            platform = chosen
+            val device = WebOsDevice(host = host, viaCompanion = viaCompanion)
+            val result = chosen.connect(device)
             result.fold(
                 onSuccess = {
+                    val mode = if (viaCompanion) "companion" else "direct"
                     _ui.update {
                         it.copy(
                             isConnecting = false,
                             connectedHost = host,
-                            status = "Connected · $host",
-                            message = "Connected via TV companion"
+                            connectionMode = mode,
+                            status = "Connected · $host · $mode",
+                            message = "Connected via $mode"
                         )
                     }
                     refreshAudio()
@@ -129,6 +147,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             _ui.update {
                 it.copy(
                     connectedHost = null,
+                    connectionMode = null,
                     status = "Not connected",
                     apps = emptyList(),
                     audioVolume = null
@@ -199,6 +218,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                 _ui.update {
                     it.copy(
                         connectedHost = if (lost) null else it.connectedHost,
+                        connectionMode = if (lost) null else it.connectionMode,
                         status = if (lost) "Connection lost — reconnect" else it.status,
                         message = error.message ?: "Command failed"
                     )
