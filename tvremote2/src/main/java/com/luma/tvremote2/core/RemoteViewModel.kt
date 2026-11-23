@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.luma.tvremote2.data.SecureTvStore
+import com.luma.tvremote2.input.AirMouseController
 import com.luma.tvremote2.network.CompanionScanner
 import com.luma.tvremote2.network.TvScanner
 import com.luma.tvremote2.platform.webos.DirectWebOsPlatform
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 
 data class RemoteUiState(
@@ -33,6 +35,13 @@ data class RemoteUiState(
     val audioVolume: Int? = null,
     val audioMuted: Boolean = false,
     val connectionMode: String? = null,
+    val airMouseEnabled: Boolean = false,
+    val airMouseAvailable: Boolean = false,
+    val airMouseSensor: String? = null,
+    val airMouseStatus: String? = null,
+    val airMouseSensitivity: Float = 1f,
+    val airMouseInvertX: Boolean = false,
+    val airMouseInvertY: Boolean = false,
     val message: String? = null
 )
 
@@ -49,10 +58,44 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         RemoteUiState(
             hostInput = store.lastHost().orEmpty(),
             darkTheme = store.darkTheme(),
-            haptics = store.haptics()
+            haptics = store.haptics(),
+            airMouseEnabled = store.airMouseEnabled(),
+            airMouseSensitivity = store.airMouseSensitivity(),
+            airMouseInvertX = store.airMouseInvertX(),
+            airMouseInvertY = store.airMouseInvertY()
         )
     )
     val ui: StateFlow<RemoteUiState> = _ui.asStateFlow()
+
+    // Sensor events can arrive ~80 times a second. A single consumer keeps the
+    // input socket writes serialised; the bounded buffer drops the oldest
+    // sample if the TV is slow instead of growing without limit.
+    private val airMoves = Channel<Pair<Int, Int>>(128)
+
+    private val airMouse = AirMouseController(
+        getApplication(),
+        onMove = { dx, dy -> airMoves.trySend(dx to dy) },
+        onStatus = { text -> _ui.update { it.copy(airMouseStatus = text) } }
+    )
+
+    init {
+        airMouse.configure(
+            store.airMouseSensitivity(),
+            store.airMouseInvertX(),
+            store.airMouseInvertY()
+        )
+        _ui.update {
+            it.copy(
+                airMouseAvailable = airMouse.isAvailable(),
+                airMouseSensor = if (airMouse.isAvailable()) airMouse.sensorName() else null
+            )
+        }
+        viewModelScope.launch {
+            for ((dx, dy) in airMoves) {
+                runCatching { platform.move(dx, dy) }
+            }
+        }
+    }
 
     fun onHostInput(value: String) {
         _ui.update { it.copy(hostInput = value) }
@@ -157,6 +200,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun disconnect() {
+        stopAirMouse()
         viewModelScope.launch {
             platform.disconnect()
             _ui.update {
@@ -190,6 +234,66 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     fun scroll(dx: Int, dy: Int) = command { platform.scroll(dx, dy) }
     fun click() = command { platform.click() }
     fun move(dx: Int, dy: Int) = command { platform.move(dx, dy) }
+    fun clickPointer() = click()
+    fun movePointer(dx: Int, dy: Int) = command { platform.move(dx, dy) }
+
+    // ---- Air mouse -------------------------------------------------------------
+
+    fun setAirMouseEnabled(enabled: Boolean) {
+        store.setAirMouseEnabled(enabled)
+        _ui.update {
+            it.copy(
+                airMouseEnabled = enabled,
+                airMouseStatus = if (enabled) {
+                    "Air mouse ready — hold the phone still to calibrate"
+                } else {
+                    "Air mouse off · touchpad still active"
+                }
+            )
+        }
+        if (!enabled) stopAirMouse()
+    }
+
+    fun setAirMouseSensitivity(value: Float) {
+        val limited = value.coerceIn(0.25f, 3f)
+        store.setAirMouseSensitivity(limited)
+        airMouse.configure(limited, _ui.value.airMouseInvertX, _ui.value.airMouseInvertY)
+        _ui.update { it.copy(airMouseSensitivity = limited) }
+    }
+
+    fun setAirMouseInvertX(enabled: Boolean) {
+        val state = _ui.value
+        store.setAirMouseInvert(enabled, state.airMouseInvertY)
+        airMouse.configure(state.airMouseSensitivity, enabled, state.airMouseInvertY)
+        _ui.update { it.copy(airMouseInvertX = enabled) }
+    }
+
+    fun setAirMouseInvertY(enabled: Boolean) {
+        val state = _ui.value
+        store.setAirMouseInvert(state.airMouseInvertX, enabled)
+        airMouse.configure(state.airMouseSensitivity, state.airMouseInvertX, enabled)
+        _ui.update { it.copy(airMouseInvertY = enabled) }
+    }
+
+    /** Measures gyroscope bias while the phone is still; safe to call anytime. */
+    fun recalibrateAirMouse() {
+        airMouse.calibrate()
+    }
+
+    /** Called by the Cursor screen while it is visible and the toggle is on. */
+    fun startAirMouse() {
+        if (!_ui.value.airMouseEnabled || _ui.value.connectedHost == null) return
+        airMouse.configure(
+            _ui.value.airMouseSensitivity,
+            _ui.value.airMouseInvertX,
+            _ui.value.airMouseInvertY
+        )
+        airMouse.start()
+    }
+
+    fun stopAirMouse() {
+        airMouse.stop()
+    }
 
     fun sendKeyboardText() {
         val text = _ui.value.keyboardText
@@ -298,5 +402,11 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     fun setHaptics(enabled: Boolean) {
         store.setHaptics(enabled)
         _ui.update { it.copy(haptics = enabled) }
+    }
+
+    override fun onCleared() {
+        stopAirMouse()
+        airMoves.close()
+        super.onCleared()
     }
 }

@@ -60,10 +60,37 @@ class SecureTvStore(context: Context) {
         prefs.edit().putBoolean(KEY_HAPTICS, enabled).apply()
     }
 
+    fun airMouseEnabled(): Boolean = prefs.getBoolean(KEY_AIR_MOUSE_ENABLED, false)
+
+    fun setAirMouseEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_AIR_MOUSE_ENABLED, enabled).apply()
+    }
+
+    fun airMouseSensitivity(): Float = prefs.getFloat(KEY_AIR_MOUSE_SENSITIVITY, 1f)
+
+    fun setAirMouseSensitivity(value: Float) {
+        prefs.edit().putFloat(KEY_AIR_MOUSE_SENSITIVITY, value).apply()
+    }
+
+    fun airMouseInvertX(): Boolean = prefs.getBoolean(KEY_AIR_MOUSE_INVERT_X, false)
+
+    fun airMouseInvertY(): Boolean = prefs.getBoolean(KEY_AIR_MOUSE_INVERT_Y, false)
+
+    fun setAirMouseInvert(x: Boolean, y: Boolean) {
+        prefs.edit()
+            .putBoolean(KEY_AIR_MOUSE_INVERT_X, x)
+            .putBoolean(KEY_AIR_MOUSE_INVERT_Y, y)
+            .apply()
+    }
+
     private companion object {
         const val PREFS_NAME = "luma_tv_remote_2_secure"
         const val KEY_LAST_HOST = "last_host"
         const val KEY_DARK_THEME = "dark_theme"
         const val KEY_HAPTICS = "haptics"
+        const val KEY_AIR_MOUSE_ENABLED = "air_mouse_enabled"
+        const val KEY_AIR_MOUSE_SENSITIVITY = "air_mouse_sensitivity"
+        const val KEY_AIR_MOUSE_INVERT_X = "air_mouse_invert_x"
+        const val KEY_AIR_MOUSE_INVERT_Y = "air_mouse_invert_y"
     }
 }
