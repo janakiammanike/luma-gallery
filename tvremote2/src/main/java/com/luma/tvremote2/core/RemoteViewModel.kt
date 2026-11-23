@@ -26,6 +26,9 @@ data class RemoteUiState(
     val darkTheme: Boolean = false,
     val haptics: Boolean = true,
     val keyboardText: String = "",
+    val searchText: String = "",
+    val musicQuery: String = "",
+    val castUrl: String = "",
     val apps: List<WebOsApp> = emptyList(),
     val audioVolume: Int? = null,
     val audioMuted: Boolean = false,
@@ -57,6 +60,18 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
 
     fun onKeyboardText(value: String) {
         _ui.update { it.copy(keyboardText = value) }
+    }
+
+    fun onSearchText(value: String) {
+        _ui.update { it.copy(searchText = value) }
+    }
+
+    fun onMusicQuery(value: String) {
+        _ui.update { it.copy(musicQuery = value) }
+    }
+
+    fun onCastUrl(value: String) {
+        _ui.update { it.copy(castUrl = value) }
     }
 
     fun consumeMessage() {
@@ -205,6 +220,54 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun launchApp(id: String) = command { platform.launchApp(id) }
+
+    fun selectInput(inputAppId: String) = command {
+        platform.selectInput(inputAppId)
+        _ui.update { it.copy(message = "Switched TV input") }
+    }
+
+    fun searchTv() {
+        val query = _ui.value.searchText.trim()
+        if (query.isBlank()) {
+            _ui.update { it.copy(message = "Type something to search first") }
+            return
+        }
+        command {
+            val result = platform.searchOnTv(query)
+            _ui.update { it.copy(message = result) }
+        }
+    }
+
+    fun sendMusic() {
+        val query = _ui.value.musicQuery.trim()
+        if (query.isBlank()) {
+            _ui.update { it.copy(message = "Enter a track or playlist name first") }
+            return
+        }
+        command {
+            // Android cannot hand another app's DRM audio to the TV, so we open
+            // the TV's own YouTube search — the same honest path the legacy app used.
+            val result = platform.openAppSearch("youtube.leanback.v4", query)
+            _ui.update { it.copy(message = result) }
+        }
+    }
+
+    fun castMedia() {
+        val url = _ui.value.castUrl.trim()
+        if (url.isBlank()) {
+            _ui.update { it.copy(message = "Enter a media URL first") }
+            return
+        }
+        command {
+            platform.playMediaUrl(url)
+            _ui.update { it.copy(message = "Sent media URL to the TV player") }
+        }
+    }
+
+    fun openMirroring() = command {
+        platform.openScreenMirroring()
+        _ui.update { it.copy(message = "Opened screen mirroring on the TV") }
+    }
 
     private fun command(block: suspend () -> Unit) {
         if (!platform.isConnected()) {

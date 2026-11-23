@@ -54,7 +54,7 @@ fun RemoteScreen(vm: RemoteViewModel, modifier: Modifier = Modifier) {
                 Button(onClick = { vm.button("UP") }) { Text("▲") }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = { vm.button("LEFT") }) { Text("◀") }
-                    Button(onClick = { vm.button("OK") }) { Text("OK") }
+                    Button(onClick = { vm.button("ENTER") }) { Text("OK") }
                     Button(onClick = { vm.button("RIGHT") }) { Text("▶") }
                 }
                 Button(onClick = { vm.button("DOWN") }) { Text("▼") }

@@ -88,6 +88,17 @@ class DirectWebOsPlatform(
             val socketPath = request(WebOsProtocol.ENDPOINT_INPUT_SOCKET).getString("socketPath")
             openInputSocket(http, host, socketPath)
 
+            // Enables standard webOS text input on most firmware versions.
+            try {
+                request(
+                    WebOsProtocol.ENDPOINT_REGISTER_KEYBOARD,
+                    type = "subscribe",
+                    timeoutMs = 5_000
+                )
+            } catch (_: Exception) {
+                // Some firmware does not expose this service; keyboard may still work.
+            }
+
             currentHost = host
             connected = true
             onStatus("Connected directly to TV")
@@ -319,6 +330,7 @@ class DirectWebOsPlatform(
     private suspend fun request(
         uri: String,
         payload: Map<String, Any?> = emptyMap(),
+        type: String = "request",
         timeoutMs: Long = REQUEST_TIMEOUT_MS
     ): JSONObject = withContext(Dispatchers.IO) {
         val id = "cmd_${counter.incrementAndGet()}"
@@ -327,7 +339,7 @@ class DirectWebOsPlatform(
         val ws = mainSocket ?: throw IllegalStateException("Not connected to TV")
         val message = JSONObject()
             .put("id", id)
-            .put("type", "request")
+            .put("type", type)
             .put("uri", "ssap://$uri")
             .put("payload", JSONObject(payload))
         if (!ws.send(message.toString())) throw IllegalStateException("TV connection is closed")
@@ -408,6 +420,77 @@ class DirectWebOsPlatform(
 
     override suspend fun launchApp(id: String) {
         request(WebOsProtocol.ENDPOINT_LAUNCH_APP, mapOf("id" to id))
+    }
+
+    override suspend fun searchOnTv(query: String): String {
+        if (query.isBlank()) return "Type something to search"
+        return try {
+            request("com.webos.service.search/search", mapOf("query" to query))
+            "TV search opened for \"$query\""
+        } catch (_: Exception) {
+            try {
+                request(
+                    WebOsProtocol.ENDPOINT_LAUNCH_APP,
+                    mapOf("id" to "com.webos.app.search", "params" to mapOf("query" to query))
+                )
+                "Search app launched for \"$query\""
+            } catch (_: Exception) {
+                "Search is not exposed by this TV firmware. Use the Keyboard tab in TV search."
+            }
+        }
+    }
+
+    override suspend fun openAppSearch(appId: String, query: String): String {
+        if (query.isBlank()) return "Type something to search"
+        val encoded = java.net.URLEncoder.encode(query, "UTF-8")
+        val candidates = when {
+            appId.contains("youtube", ignoreCase = true) -> listOf(
+                "youtube://results?search_query=$encoded",
+                "youtube://search?q=$encoded"
+            )
+            appId.contains("netflix", ignoreCase = true) -> listOf(
+                "nflix://search?query=$encoded"
+            )
+            else -> emptyList()
+        }
+        for (uri in candidates) {
+            try {
+                request(
+                    WebOsProtocol.ENDPOINT_LAUNCH_APP,
+                    mapOf("id" to appId, "params" to mapOf("uri" to uri))
+                )
+                return "Opened $appId search for \"$query\""
+            } catch (_: Exception) {
+                // Firmware may reject this URI form; try the next one.
+            }
+        }
+        return try {
+            launchApp(appId)
+            "Opened $appId. Use its search box, then the Keyboard tab to type \"$query\"."
+        } catch (e: Exception) {
+            "Could not open $appId: ${e.message ?: "launch failed"}"
+        }
+    }
+
+    override suspend fun selectInput(inputAppId: String) {
+        request(WebOsProtocol.ENDPOINT_LAUNCH_APP, mapOf("id" to inputAppId))
+    }
+
+    override suspend fun playMediaUrl(url: String) {
+        request(
+            WebOsProtocol.ENDPOINT_LAUNCH_APP,
+            mapOf(
+                "id" to "com.webos.app.mediadiscovery",
+                "params" to mapOf("uri" to url, "mediaUrl" to url)
+            )
+        )
+    }
+
+    override suspend fun openScreenMirroring() {
+        request(
+            WebOsProtocol.ENDPOINT_LAUNCH_APP,
+            mapOf("id" to "sooltrstudio.screenmirroring.receiver")
+        )
     }
 
     override suspend fun audioVolume(): Int? {

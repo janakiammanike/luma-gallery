@@ -38,6 +38,14 @@ interface WebOsPlatform {
     // Audio / power / apps
     suspend fun apps(): List<WebOsApp>
     suspend fun launchApp(id: String)
+
+    // More controls — all backed by real SSAP commands from the legacy client.
+    suspend fun searchOnTv(query: String): String
+    suspend fun openAppSearch(appId: String, query: String): String
+    suspend fun selectInput(inputAppId: String)
+    suspend fun playMediaUrl(url: String)
+    suspend fun openScreenMirroring()
+
     suspend fun audioVolume(): Int?
     suspend fun volumeUp()
     suspend fun volumeDown()

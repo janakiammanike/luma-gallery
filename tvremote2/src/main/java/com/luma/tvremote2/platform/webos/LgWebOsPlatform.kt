@@ -186,6 +186,77 @@ class LgWebOsPlatform(
         request(ENDPOINT_LAUNCH_APP, mapOf("id" to id))
     }
 
+    override suspend fun searchOnTv(query: String): String {
+        if (query.isBlank()) return "Type something to search"
+        return try {
+            request("com.webos.service.search/search", mapOf("query" to query))
+            "TV search opened for \"$query\""
+        } catch (_: Exception) {
+            try {
+                request(
+                    ENDPOINT_LAUNCH_APP,
+                    mapOf("id" to "com.webos.app.search", "params" to mapOf("query" to query))
+                )
+                "Search app launched for \"$query\""
+            } catch (_: Exception) {
+                "Search is not exposed by this TV firmware. Use the Keyboard tab in TV search."
+            }
+        }
+    }
+
+    override suspend fun openAppSearch(appId: String, query: String): String {
+        if (query.isBlank()) return "Type something to search"
+        val encoded = java.net.URLEncoder.encode(query, "UTF-8")
+        val candidates = when {
+            appId.contains("youtube", ignoreCase = true) -> listOf(
+                "youtube://results?search_query=$encoded",
+                "youtube://search?q=$encoded"
+            )
+            appId.contains("netflix", ignoreCase = true) -> listOf(
+                "nflix://search?query=$encoded"
+            )
+            else -> emptyList()
+        }
+        for (uri in candidates) {
+            try {
+                request(
+                    ENDPOINT_LAUNCH_APP,
+                    mapOf("id" to appId, "params" to mapOf("uri" to uri))
+                )
+                return "Opened $appId search for \"$query\""
+            } catch (_: Exception) {
+                // Firmware may reject this URI form; try the next one.
+            }
+        }
+        return try {
+            launchApp(appId)
+            "Opened $appId. Use its search box, then the Keyboard tab to type \"$query\"."
+        } catch (e: Exception) {
+            "Could not open $appId: ${e.message ?: "launch failed"}"
+        }
+    }
+
+    override suspend fun selectInput(inputAppId: String) {
+        request(ENDPOINT_LAUNCH_APP, mapOf("id" to inputAppId))
+    }
+
+    override suspend fun playMediaUrl(url: String) {
+        request(
+            ENDPOINT_LAUNCH_APP,
+            mapOf(
+                "id" to "com.webos.app.mediadiscovery",
+                "params" to mapOf("uri" to url, "mediaUrl" to url)
+            )
+        )
+    }
+
+    override suspend fun openScreenMirroring() {
+        request(
+            ENDPOINT_LAUNCH_APP,
+            mapOf("id" to "sooltrstudio.screenmirroring.receiver")
+        )
+    }
+
     override suspend fun audioVolume(): Int? {
         val payload = request(ENDPOINT_AUDIO_STATUS)
         val status = payload.optJSONObject("volumeStatus") ?: payload

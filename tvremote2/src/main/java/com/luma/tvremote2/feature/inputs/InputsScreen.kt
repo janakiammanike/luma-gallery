@@ -40,8 +40,16 @@ fun InputsScreen(vm: RemoteViewModel, modifier: Modifier = Modifier) {
             }
         }
         SectionCard("Inputs") {
-            listOf("HDMI 1", "HDMI 2", "HDMI 3", "TV", "Live TV").forEach {
-                OutlinedButton(onClick = { vm.reportPending(it) }, modifier = Modifier.fillMaxWidth()) { Text(it) }
+            listOf(
+                "HDMI 1" to "com.webos.app.hdmi1",
+                "HDMI 2" to "com.webos.app.hdmi2",
+                "HDMI 3" to "com.webos.app.hdmi3",
+                "Live TV" to "com.webos.app.livetv"
+            ).forEach { (label, appId) ->
+                OutlinedButton(
+                    onClick = { vm.selectInput(appId) },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text(label) }
             }
         }
     }
