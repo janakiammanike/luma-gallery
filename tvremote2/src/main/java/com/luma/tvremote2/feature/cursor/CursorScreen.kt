@@ -171,7 +171,7 @@ fun CursorScreen(
 
         SectionCard("Touchpad") {
             Text(
-                "Drag to move the TV cursor. Tap to click.",
+                "Drag to move the TV cursor. Tap to click. Use Back to return to the previous TV screen.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -220,6 +220,23 @@ fun CursorScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Medium
                 )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { vm.button("BACK") },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("◀  Back")
+                }
+                Button(
+                    onClick = vm::clickPointer,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("OK / Click")
+                }
             }
         }
 
