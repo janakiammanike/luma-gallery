@@ -308,7 +308,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
 
     /** Measures gyroscope bias while the phone is still; safe to call anytime. */
     fun recalibrateAirMouse() {
-        airMouse.beginStillCalibration()
+        airMouse.beginStillCalibration(strict = false)
         _ui.update { it.copy(message = "Hold the phone still for a fresh gyroscope bias") }
     }
 
@@ -321,7 +321,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             _ui.value.airMouseInvertY
         )
         airMouse.start()
-        airMouse.beginStillCalibration()
+        airMouse.beginStillCalibration(strict = false)
     }
 
     fun stopAirMouse() {

@@ -2,6 +2,7 @@ package com.luma.tvremote2.input
 
 import android.content.Context
 import android.hardware.Sensor
+import android.os.SystemClock
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
@@ -60,6 +61,7 @@ class AirMouseController(
     private var directionName = ""
     private val calibrationSum = FloatArray(3)
     private var calibrationSamples = 0
+    private var strictStillCheck = true
     private var directionSumX = 0f
     private var directionSumY = 0f
     private var directionSamples = 0
@@ -122,14 +124,21 @@ class AirMouseController(
 
     /** Suppresses pointer output briefly while a recenter move is sent. */
     fun pausePointer(ms: Long) {
-        suppressUntilNs = System.nanoTime() + ms * 1_000_000L
+        suppressUntilNs = SystemClock.elapsedRealtimeNanos() + ms * 1_000_000L
     }
 
-    /** Measures bias from a stable window; the wizard shows live progress. */
-    fun beginStillCalibration() {
+    /**
+     * Measures bias from a stable window; the wizard shows live progress.
+     *
+     * [strict] is used by the guided wizard: moving during the measurement
+     * restarts it. Normal start-up uses a non-strict capture so the pointer
+     * always becomes usable even if the phone is already in motion.
+     */
+    fun beginStillCalibration(strict: Boolean = true) {
         resetHistory()
         calibrationSum.fill(0f)
         calibrationSamples = 0
+        strictStillCheck = strict
         calibration = SensorCalibration.STILL
         onProgress(0f, "Hold the phone still — measuring gyroscope bias")
     }
@@ -197,10 +206,13 @@ class AirMouseController(
 
     private fun handleGyro(values: FloatArray, dt: Float, now: Long) {
         if (values.size < 3 || dt <= 0f) return
+        val realNow = SystemClock.elapsedRealtimeNanos()
         recordHistory(values)
 
         if (calibration == SensorCalibration.STILL) {
-            if (historyCount == STILL_WINDOW && historyVariance() > UNSTABLE_VARIANCE) {
+            if (strictStillCheck && historyCount == STILL_WINDOW &&
+                historyVariance() > UNSTABLE_VARIANCE
+            ) {
                 calibrationSum.fill(0f)
                 calibrationSamples = 0
                 resetHistory()
@@ -250,10 +262,10 @@ class AirMouseController(
             return
         }
 
-        if (now < suppressUntilNs) return
+        if (realNow < suppressUntilNs) return
 
         detectShake(screenX, now)
-        if (now < suppressUntilNs) return
+        if (realNow < suppressUntilNs) return
 
         // Zero-velocity update: when the phone is stationary, keep the bias
         // learning and force the pointer to rest. This is what stops drift.
@@ -412,7 +424,7 @@ class AirMouseController(
             shakeFlips++
             if (shakeFlips >= SHAKE_FLIPS) {
                 shakeCooldownNs = now + SHAKE_COOLDOWN_NS
-                suppressUntilNs = now + SHAKE_SUPPRESS_NS
+                suppressUntilNs = SystemClock.elapsedRealtimeNanos() + SHAKE_SUPPRESS_NS
                 shakeFlips = 0
                 lastShakeSign = 0
                 onShake()
