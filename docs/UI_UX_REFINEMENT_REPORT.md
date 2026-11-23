@@ -104,6 +104,13 @@ Touch target audit on Remote: D-pad keys 192px (64dp), section buttons 168px (56
 
 These were captured with `adb screencap` after explicit approval. During capture only navigation taps were used; no TV command (volume, power, playback, pointer) was sent by automation. The assistant cannot visually open images in this session, so the screenshots need the user's visual review; the layout audit above is programmatic (UI hierarchy bounds), not a human visual judgement.
 
+## Release artifact
+
+- Final version: `versionName = 2.0.0`, `versionCode = 2` (was `2.0.0-phase1` / `1`).
+- Signed release APK: `tvremote2/build/outputs/apk/release/tvremote2-release.apk` (8,740,042 bytes).
+- `apksigner verify`: valid, single signer (`CN=Janaki Ram, OU=Luma`), APK Signature Scheme v2. `aapt2`: `com.luma.tvremote2`, versionCode 2, versionName 2.0.0, minSdk 26, targetSdk 36.
+- No AAB was produced: the user will upload the APK to the Play Store directly.
+
 ## Manual verification (user)
 
 After the Phase 3A build was installed, the user reported that **everything is working** on the real TV/phone. This covers the rewritten Remote, Cursor, Keyboard, Apps, More, Inputs, Search, Music and Cast layouts and the shared header/navigation. No regression was reported.
