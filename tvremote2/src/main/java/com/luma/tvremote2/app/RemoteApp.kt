@@ -2,6 +2,8 @@ package com.luma.tvremote2.app
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -10,7 +12,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -38,15 +39,7 @@ import com.luma.tvremote2.feature.remote.RemoteScreen
 import com.luma.tvremote2.feature.search.SearchScreen
 import com.luma.tvremote2.feature.settings.SettingsDialog
 
-/**
- * Phase 1 UI shell.
- *
- * Screen keys, labels, bottom navigation and colours match the legacy app.
- * Navigation is now Navigation Compose instead of a mutableStateOf string.
- *
- * "Preview shell" exists only so the migrated UI can be verified without LG
- * connectivity. It does not claim a TV connection.
- */
+/** Shell with the same screens/navigation as the legacy app, now using real state. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RemoteApp(vm: RemoteViewModel) {
@@ -55,19 +48,12 @@ fun RemoteApp(vm: RemoteViewModel) {
     val snackbar = remember { SnackbarHostState() }
     var showMore by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
-    var previewShell by remember { mutableStateOf(false) }
+    val connected = state.connectedHost != null
 
     LaunchedEffect(state.message) {
         state.message?.let {
             snackbar.showSnackbar(it)
             vm.consumeMessage()
-        }
-    }
-
-    fun leavePreview() {
-        previewShell = false
-        nav.navigate(Routes.CONNECT) {
-            popUpTo(Routes.CONNECT) { inclusive = true }
         }
     }
 
@@ -79,27 +65,27 @@ fun RemoteApp(vm: RemoteViewModel) {
                     Column {
                         Text("Luma TV Remote", fontWeight = FontWeight.SemiBold)
                         Text(
-                            text = if (previewShell) "UI preview · LG logic pending" else state.status,
-                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+                            text = state.status,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 actions = {
                     TextButton(onClick = { showSettings = true }) { Text("Settings") }
-                    if (!previewShell) {
+                    if (connected) {
                         TextButton(onClick = {
-                            previewShell = true
-                            nav.navigate(Routes.REMOTE)
-                        }) { Text("Preview shell") }
-                    } else {
-                        TextButton(onClick = ::leavePreview) { Text("Back to connect") }
+                            vm.disconnect()
+                            nav.navigate(Routes.CONNECT) {
+                                popUpTo(Routes.CONNECT) { inclusive = true }
+                            }
+                        }) { Text("Disconnect") }
                     }
                 }
             )
         },
         bottomBar = {
-            if (previewShell) {
+            if (connected) {
                 NavigationBar {
                     primaryNavItems.forEach { item ->
                         val current = nav.currentDestination?.route
@@ -129,7 +115,7 @@ fun RemoteApp(vm: RemoteViewModel) {
             startDestination = Routes.CONNECT,
             modifier = Modifier.padding(padding)
         ) {
-            composable(Routes.CONNECT) { ConnectScreen(vm) }
+            composable(Routes.CONNECT) { ConnectScreen(vm, onConnected = { nav.navigate(Routes.REMOTE) }) }
             composable(Routes.REMOTE) { RemoteScreen(vm) }
             composable(Routes.CURSOR) { CursorScreen(vm) }
             composable(Routes.KEYBOARD) { KeyboardScreen(vm) }

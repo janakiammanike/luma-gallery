@@ -5,10 +5,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.luma.tvremote2.core.RemoteViewModel
@@ -16,15 +20,23 @@ import com.luma.tvremote2.designsystem.SectionCard
 
 @Composable
 fun InputsScreen(vm: RemoteViewModel, modifier: Modifier = Modifier) {
-    Column(modifier = modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val state by vm.ui.collectAsState()
+
+    Column(
+        modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         SectionCard("Inputs & sound") {
             Text("Sound output", style = MaterialTheme.typography.bodyMedium)
-            Text("—", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("Volume 0", style = MaterialTheme.typography.bodyMedium)
+            Text("TV speaker", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "Volume ${state.audioVolume ?: "—"}${if (state.audioMuted) " · Muted" else ""}",
+                style = MaterialTheme.typography.bodyMedium
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("Vol −", "Mute", "Vol +").forEach {
-                    OutlinedButton(onClick = { vm.reportPending(it) }, modifier = Modifier.weight(1f)) { Text(it) }
-                }
+                OutlinedButton(onClick = vm::volumeDown, modifier = Modifier.weight(1f)) { Text("Vol −") }
+                OutlinedButton(onClick = vm::toggleMute, modifier = Modifier.weight(1f)) { Text("Mute") }
+                OutlinedButton(onClick = vm::volumeUp, modifier = Modifier.weight(1f)) { Text("Vol +") }
             }
         }
         SectionCard("Inputs") {

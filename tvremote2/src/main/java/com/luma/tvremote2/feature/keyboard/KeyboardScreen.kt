@@ -34,13 +34,13 @@ fun KeyboardScreen(vm: RemoteViewModel, modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { vm.reportPending("Send text") }, modifier = Modifier.weight(1f)) {
+                Button(onClick = vm::sendKeyboardText, modifier = Modifier.weight(1f)) {
                     Text("Send")
                 }
-                Button(onClick = { vm.reportPending("Backspace") }, modifier = Modifier.weight(1f)) {
+                Button(onClick = vm::backspace, modifier = Modifier.weight(1f)) {
                     Text("⌫ Backspace")
                 }
-                Button(onClick = { vm.reportPending("Enter") }, modifier = Modifier.weight(1f)) {
+                Button(onClick = vm::enter, modifier = Modifier.weight(1f)) {
                     Text("Enter ↵")
                 }
             }

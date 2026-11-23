@@ -11,6 +11,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -18,10 +21,15 @@ import com.luma.tvremote2.core.RemoteViewModel
 import com.luma.tvremote2.designsystem.SectionCard
 
 @Composable
-fun ConnectScreen(vm: RemoteViewModel, modifier: Modifier = Modifier) {
-    val state = vm.ui.value
+fun ConnectScreen(vm: RemoteViewModel, onConnected: () -> Unit) {
+    val state by vm.ui.collectAsState()
+
+    LaunchedEffect(state.connectedHost) {
+        if (state.connectedHost != null) onConnected()
+    }
+
     Column(
-        modifier = modifier.padding(16.dp),
+        modifier = Modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("Control your LG TV", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
@@ -49,25 +57,29 @@ fun ConnectScreen(vm: RemoteViewModel, modifier: Modifier = Modifier) {
                 onValueChange = vm::onHostInput,
                 label = { Text("TV IP address") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                enabled = !state.isConnecting
             )
-            Button(onClick = { vm.reportPending("Connect") }, modifier = Modifier.fillMaxWidth()) {
-                Text("Connect")
+            if (state.detectedHost != null) {
+                Text(
+                    "Found via companion: ${state.detectedHost}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
+            Button(
+                onClick = { vm.connect() },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !state.isConnecting
+            ) {
+                Text(if (state.isConnecting) "Connecting…" else "Connect")
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { vm.reportPending("Scan network") }, modifier = Modifier.weight(1f)) {
-                    Text("Scan network")
+                OutlinedButton(onClick = vm::discoverCompanion, modifier = Modifier.weight(1f)) {
+                    Text("Find TV")
                 }
-                OutlinedButton(onClick = { vm.reportPending("TV app") }, modifier = Modifier.weight(1f)) {
+                OutlinedButton(onClick = { vm.connect(state.detectedHost.orEmpty()) }, modifier = Modifier.weight(1f)) {
                     Text("TV app")
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { vm.reportPending("Bluetooth") }, modifier = Modifier.weight(1f)) {
-                    Text("Bluetooth")
-                }
-                OutlinedButton(onClick = { vm.reportPending("mDNS") }, modifier = Modifier.weight(1f)) {
-                    Text("mDNS")
                 }
             }
         }

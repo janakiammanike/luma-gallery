@@ -15,12 +15,19 @@ object WebOsProtocol {
 
     const val COMPANION_APP_ID = "com.luma.tvcompanion"
 
-    // SSAP endpoints used by the legacy client.
-    const val ENDPOINT_INPUT_SOCKET = "com.webos.service.inputmanager/getInputSocket"
-    const val ENDPOINT_NETWORK_INFO = "com.webos.service.connectionmanager/getStatus"
+    // SSAP endpoints used by the legacy client (verified against real TV).
+    const val ENDPOINT_INPUT_SOCKET = "com.webos.service.networkinput/getPointerInputSocket"
+    const val ENDPOINT_NETWORK_INFO = "com.webos.service.connectionmanager/getinfo"
+    const val ENDPOINT_REGISTER_KEYBOARD = "com.webos.service.ime/registerRemoteKeyboard"
+    const val ENDPOINT_INSERT_TEXT = "com.webos.service.ime/insertText"
+    const val ENDPOINT_DELETE_CHARS = "com.webos.service.ime/deleteCharacters"
     const val ENDPOINT_SEND_ENTER = "com.webos.service.ime/sendEnterKey"
     const val ENDPOINT_LAUNCH_POINTS = "com.webos.applicationManager/listLaunchPoints"
     const val ENDPOINT_LAUNCH_APP = "system.launcher/launch"
+    const val ENDPOINT_AUDIO_STATUS = "audio/getStatus"
+    const val ENDPOINT_VOLUME_UP = "audio/volumeUp"
+    const val ENDPOINT_VOLUME_DOWN = "audio/volumeDown"
+    const val ENDPOINT_SET_MUTE = "audio/setMute"
 
     // Input socket frames are newline-delimited text, not JSON.
     const val FRAME_BUTTON = "type:button\nname:%s\n\n"

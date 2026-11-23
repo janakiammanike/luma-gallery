@@ -89,6 +89,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.security.crypto)
+    implementation(libs.okhttp)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
