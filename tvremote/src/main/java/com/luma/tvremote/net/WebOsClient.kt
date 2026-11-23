@@ -601,12 +601,23 @@ class WebOsClient(
             .url("$proxyBaseUrl/command")
             .post(json.toRequestBody("application/json".toMediaType()))
             .build()
-        client.newCall(request).execute().use { response ->
-            val text = response.body?.string().orEmpty()
-            if (!response.isSuccessful) {
-                error("Companion HTTP ${response.code}: ${text.take(120)}")
+        try {
+            client.newCall(request).execute().use { response ->
+                val text = response.body?.string().orEmpty()
+                if (!response.isSuccessful) {
+                    error("Companion HTTP ${response.code}: ${text.take(120)}")
+                }
+                JSONObject(text)
             }
-            JSONObject(text)
+        } catch (e: java.net.ConnectException) {
+            // The companion service died or the TV rebooted. Without this the
+            // app keeps showing "Connected" while every command silently fails,
+            // which looks exactly like a broken remote to the user.
+            if (connected) {
+                connected = false
+                onDisconnected()
+            }
+            throw e
         }
     }
 
