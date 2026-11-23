@@ -118,6 +118,32 @@ class TvStore(context: Context) {
         prefs.edit().putBoolean(KEY_HAPTICS, enabled).apply()
     }
 
+    fun airMouseEnabled(): Boolean = prefs.getBoolean(KEY_AIR_MOUSE, false)
+
+    fun setAirMouseEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_AIR_MOUSE, enabled).apply()
+    }
+
+    /** Pointer speed multiplier for phone-tilt movement. */
+    fun airMouseSensitivity(): Float =
+        prefs.getFloat(KEY_AIR_SENSITIVITY, 1f).coerceIn(0.25f, 3f)
+
+    fun setAirMouseSensitivity(value: Float) {
+        prefs.edit().putFloat(KEY_AIR_SENSITIVITY, value.coerceIn(0.25f, 3f)).apply()
+    }
+
+    fun airMouseInvertX(): Boolean = prefs.getBoolean(KEY_AIR_INVERT_X, false)
+
+    fun setAirMouseInvertX(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_AIR_INVERT_X, enabled).apply()
+    }
+
+    fun airMouseInvertY(): Boolean = prefs.getBoolean(KEY_AIR_INVERT_Y, false)
+
+    fun setAirMouseInvertY(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_AIR_INVERT_Y, enabled).apply()
+    }
+
     private companion object {
         const val KEY_HOSTS = "hosts"
         const val KEY_LAST_HOST = "last_host"
@@ -126,5 +152,9 @@ class TvStore(context: Context) {
         const val KEY_RECENT_APPS = "recent_apps"
         const val KEY_DARK_THEME = "dark_theme"
         const val KEY_HAPTICS = "haptics"
+        const val KEY_AIR_MOUSE = "air_mouse"
+        const val KEY_AIR_SENSITIVITY = "air_mouse_sensitivity"
+        const val KEY_AIR_INVERT_X = "air_mouse_invert_x"
+        const val KEY_AIR_INVERT_Y = "air_mouse_invert_y"
     }
 }

@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -22,8 +21,13 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +43,18 @@ import kotlin.math.roundToInt
 fun CursorTab(vm: RemoteViewModel) {
     val context = LocalContext.current
     val touchSlop = remember { ViewConfiguration.get(context).scaledTouchSlop }
+    val state by vm.ui.collectAsState()
+
+    // Only listen to the sensor while this tab is open. The touchpad below
+    // stays available at all times and uses the exact same move/click protocol.
+    DisposableEffect(state.airMouseEnabled, state.connectedHost) {
+        if (state.airMouseEnabled && state.connectedHost != null) {
+            vm.startAirMouse()
+        } else {
+            vm.stopAirMouse()
+        }
+        onDispose { vm.stopAirMouse() }
+    }
 
     Column(
         modifier = Modifier
@@ -48,6 +64,112 @@ fun CursorTab(vm: RemoteViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         NavBar(vm)
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Air mouse", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "Move the phone left / right / up / down to point. Phone roll is ignored.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = state.airMouseEnabled,
+                        enabled = state.airMouseAvailable,
+                        onCheckedChange = vm::setAirMouseEnabled
+                    )
+                }
+
+                if (!state.airMouseAvailable) {
+                    Text(
+                        "No rotation sensor was found on this phone. The touchpad still works normally.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+
+                state.airMouseStatus?.let { status ->
+                    Text(
+                        status,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = vm::recalibrateAirMouse,
+                        enabled = state.airMouseEnabled,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Recentre")
+                    }
+                    Button(
+                        onClick = vm::clickPointer,
+                        enabled = state.airMouseEnabled
+                    ) {
+                        Text("Air click")
+                    }
+                }
+
+                Text(
+                    "Sensitivity ${(state.airMouseSensitivity * 10).roundToInt() / 10f}x",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Slider(
+                    value = state.airMouseSensitivity,
+                    onValueChange = vm::setAirMouseSensitivity,
+                    valueRange = 0.25f..3f,
+                    steps = 10,
+                    enabled = state.airMouseEnabled
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "Invert X",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Switch(
+                        checked = state.airMouseInvertX,
+                        enabled = state.airMouseEnabled,
+                        onCheckedChange = vm::setAirMouseInvertX
+                    )
+                    Text(
+                        "Invert Y",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Switch(
+                        checked = state.airMouseInvertY,
+                        enabled = state.airMouseEnabled,
+                        onCheckedChange = vm::setAirMouseInvertY
+                    )
+                }
+
+                Text(
+                    "If the pointer drifts, tap Recentre while holding the phone comfortably. Air mouse stops when you leave this tab.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
 
         Card(
             modifier = Modifier.fillMaxWidth(),

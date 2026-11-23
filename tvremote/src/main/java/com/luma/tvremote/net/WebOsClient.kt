@@ -154,6 +154,22 @@ class WebOsClient(
     suspend fun move(dx: Int, dy: Int, down: Int = 0) =
         sendInput("type:move\ndx:$dx\ndy:$dy\ndown:$down\n\n")
 
+    /**
+     * Non-blocking fast path for sensor-driven pointer updates. The direct
+     * webOS input socket is thread-safe and does not need a coroutine per
+     * sample. Returns false for proxy connections so the caller can fall back
+     * to the suspend path (an HTTP request is required there).
+     */
+    fun moveNow(dx: Int, dy: Int, down: Int = 0): Boolean {
+        if (proxyBaseUrl != null || !connected) return false
+        val socket = inputSocket ?: return false
+        return try {
+            socket.send("type:move\ndx:$dx\ndy:$dy\ndown:$down\n\n")
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     suspend fun click() = sendInput("type:click\n\n")
 
     suspend fun scroll(dx: Int, dy: Int) =

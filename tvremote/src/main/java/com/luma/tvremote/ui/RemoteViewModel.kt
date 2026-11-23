@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.luma.tvremote.data.TvStore
+import com.luma.tvremote.input.AirMouseController
 import com.luma.tvremote.media.NowPlaying
 import com.luma.tvremote.media.NowPlayingStore
 import com.luma.tvremote.net.ArpTvScanner
@@ -27,8 +28,11 @@ import com.luma.tvremote.net.WebOsClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 val DEFAULT_BUTTON_GROUPS = setOf("dpad", "system", "volume", "playback", "power")
 
@@ -67,6 +71,13 @@ data class RemoteUiState(
     val showMultitasking: Boolean = false,
     val darkTheme: Boolean = false,
     val haptics: Boolean = true,
+    val airMouseEnabled: Boolean = false,
+    val airMouseAvailable: Boolean = false,
+    val airMouseSensor: String? = null,
+    val airMouseStatus: String? = null,
+    val airMouseSensitivity: Float = 1f,
+    val airMouseInvertX: Boolean = false,
+    val airMouseInvertY: Boolean = false,
     val castUrl: String? = null,
     val nowPlaying: NowPlaying? = null,
     val mediaAccessGranted: Boolean = false
@@ -77,6 +88,8 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     private var client: WebOsClient? = null
     private var mediaServer: MediaServer? = null
     private var dlna: DlnaClient? = null
+    private val airPending = AtomicReference<Pair<Int, Int>?>(null)
+    private val airSending = AtomicBoolean(false)
 
     private val _ui = MutableStateFlow(
         RemoteUiState(
@@ -91,12 +104,33 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             recentApps = store.recentApps(),
             darkTheme = store.darkTheme(),
             haptics = store.haptics(),
+            airMouseEnabled = store.airMouseEnabled(),
+            airMouseSensitivity = store.airMouseSensitivity(),
+            airMouseInvertX = store.airMouseInvertX(),
+            airMouseInvertY = store.airMouseInvertY(),
             mediaAccessGranted = NowPlayingStore.isAccessGranted(application)
         )
     )
     val ui: StateFlow<RemoteUiState> = _ui.asStateFlow()
 
+    private val airMouse = AirMouseController(
+        application,
+        onMove = { dx, dy -> onAirMouseMove(dx, dy) },
+        onStatus = { message -> _ui.update { it.copy(airMouseStatus = message) } }
+    )
+
     init {
+        airMouse.configure(
+            store.airMouseSensitivity(),
+            store.airMouseInvertX(),
+            store.airMouseInvertY()
+        )
+        _ui.update {
+            it.copy(
+                airMouseAvailable = airMouse.isAvailable(),
+                airMouseSensor = if (airMouse.isAvailable()) airMouse.sensorName() else null
+            )
+        }
         viewModelScope.launch {
             NowPlayingStore.track.collect { track ->
                 _ui.update { it.copy(nowPlaying = track) }
@@ -336,6 +370,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
                     message = null
                 )
             }
+            stopAirMouse()
             client?.close()
 
             // A remembered IP goes stale after DHCP renewal. ARP is best effort
@@ -440,6 +475,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             onStatus = { status -> _ui.update { it.copy(status = status) } },
             onClientKey = { key -> store.saveKey(host, key) },
             onDisconnected = {
+                stopAirMouse()
                 client = null
                 _ui.update {
                     it.copy(
@@ -472,6 +508,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun disconnect() {
+        stopAirMouse()
         client?.close()
         client = null
         _ui.update {
@@ -755,6 +792,102 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         _ui.update { it.copy(haptics = enabled) }
     }
 
+    fun setAirMouseEnabled(enabled: Boolean) {
+        store.setAirMouseEnabled(enabled)
+        _ui.update {
+            it.copy(
+                airMouseEnabled = enabled,
+                airMouseStatus = if (enabled) {
+                    "Air mouse ready — open the Cursor tab to start it"
+                } else {
+                    "Air mouse off · touchpad still active"
+                }
+            )
+        }
+        if (!enabled) stopAirMouse()
+    }
+
+    fun setAirMouseSensitivity(value: Float) {
+        val limited = value.coerceIn(0.25f, 3f)
+        store.setAirMouseSensitivity(limited)
+        airMouse.configure(limited, _ui.value.airMouseInvertX, _ui.value.airMouseInvertY)
+        _ui.update { it.copy(airMouseSensitivity = limited) }
+    }
+
+    fun setAirMouseInvertX(enabled: Boolean) {
+        store.setAirMouseInvertX(enabled)
+        airMouse.configure(_ui.value.airMouseSensitivity, enabled, _ui.value.airMouseInvertY)
+        _ui.update { it.copy(airMouseInvertX = enabled) }
+    }
+
+    fun setAirMouseInvertY(enabled: Boolean) {
+        store.setAirMouseInvertY(enabled)
+        airMouse.configure(_ui.value.airMouseSensitivity, _ui.value.airMouseInvertX, enabled)
+        _ui.update { it.copy(airMouseInvertY = enabled) }
+    }
+
+    fun recalibrateAirMouse() {
+        airMouse.calibrate()
+        _ui.update { it.copy(message = "Air mouse recentred — hold the phone how you like") }
+    }
+
+    /** Called by the Cursor tab while it is visible and the toggle is on. */
+    fun startAirMouse() {
+        if (!_ui.value.airMouseEnabled) return
+        airMouse.configure(
+            _ui.value.airMouseSensitivity,
+            _ui.value.airMouseInvertX,
+            _ui.value.airMouseInvertY
+        )
+        airMouse.start()
+    }
+
+    fun stopAirMouse() {
+        airMouse.stop()
+        airPending.set(null)
+    }
+
+    /**
+     * Sensor samples arrive up to ~80 times a second. Direct SSAP sends are
+     * fire-and-forget on the input socket; proxy mode coalesces samples into
+     * one HTTP request at a time so the command queue cannot grow unbounded.
+     */
+    private fun onAirMouseMove(dx: Int, dy: Int) {
+        val active = client
+        if (active == null || !active.isConnected()) return
+        if (active.moveNow(dx, dy)) return
+
+        airPending.getAndUpdate { current ->
+            if (current == null) {
+                dx to dy
+            } else {
+                (current.first + dx).coerceIn(-240, 240) to
+                    (current.second + dy).coerceIn(-240, 240)
+            }
+        }
+        if (airSending.compareAndSet(false, true)) drainAirMoves(active)
+    }
+
+    private fun drainAirMoves(active: WebOsClient) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                while (active.isConnected()) {
+                    val delta = airPending.getAndSet(null) ?: break
+                    try {
+                        active.move(delta.first, delta.second)
+                    } catch (_: Exception) {
+                        break
+                    }
+                }
+            } finally {
+                airSending.set(false)
+            }
+            if (airPending.get() != null && airSending.compareAndSet(false, true)) {
+                drainAirMoves(active)
+            }
+        }
+    }
+
     fun refreshMediaAccess() {
         val app = getApplication<android.app.Application>()
         NowPlayingStore.readCurrent(app)
@@ -879,6 +1012,8 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     override fun onCleared() {
+        stopAirMouse()
+        airPending.set(null)
         mediaServer?.shutdown()
         super.onCleared()
     }

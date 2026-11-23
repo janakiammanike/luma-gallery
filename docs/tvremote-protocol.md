@@ -132,6 +132,7 @@ Other webOS versions may differ; the limitations below still apply.
 | Volume, mute, channels, power off | Yes | SSAP audio/tv/system endpoints |
 | Play / pause / stop / rewind / fast forward | Yes | `media.controls/*` |
 | Mouse cursor | Yes | `getPointerInputSocket` → `move`, `click`, `scroll` |
+| Air mouse (phone tilt) | Yes | `TYPE_GAME_ROTATION_VECTOR` (fallback `TYPE_ROTATION_VECTOR`) → calibrated yaw/pitch deltas → the same `type:move` pointer messages as the touchpad |
 | Keyboard typing | Yes | `com.webos.service.ime/insertText`, `sendEnterKey`, `deleteCharacters` |
 | Installed app list + launch | Yes | `listLaunchPoints` / `system.launcher/launch`; shows each app's real icon fetched from the TV's self-signed HTTPS icon URL via a trust-all OkHttp loader (initials tile fallback) |
 | Multitasking overview + LG Home Hub shortcut | Yes | Apps tab "Multitasking" opens an in-app overview: live foreground app (`getForegroundAppInfo`, "On TV now") plus the last 8 launched apps as tappable icon cards that switch apps (verified Home Hub card → `com.webos.app.homeconnect`); the TV's native switcher stays available via the `RECENT` key in the NavBar and the overview footer. webOS 4.1 has no public `listRunning` endpoint (404), so the list is built from locally tracked launches, not a claim of live TV task state. |
@@ -154,6 +155,31 @@ Other webOS versions may differ; the limitations below still apply.
 | Bottom navigation + More menu | Yes | five always-visible destinations; secondary screens in a dialog |
 | ThinQ cloud devices (AC, fridge, etc.) | No | private LG cloud API, outside this app's scope |
 | webOS TV `.ipk` app | No | different SDK/toolchain; this app runs on the phone |
+
+### Air mouse
+
+The Cursor tab can drive the TV pointer by moving the phone. It uses
+`TYPE_GAME_ROTATION_VECTOR` when present and falls back to
+`TYPE_ROTATION_VECTOR`; no new Android permission is required. At start (and on
+**Recentre**, or when Android's display rotation changes) the current pose is
+saved as the reference. Each later sample is converted with
+`SensorManager.getRotationMatrixFromVector` + `getOrientation`, and only the
+**yaw** and **pitch** differences from that reference are used. **Roll is
+ignored**, so twisting the phone in its own plane does not drag the pointer.
+The delta is dead-zone filtered, low-pass smoothed, scaled by the saved
+sensitivity, clamped, and mapped through the current display rotation before
+being sent as the same relative `type:move\ndx:…\ndy:…` messages the touchpad
+sends. Invert X/Y flips either axis if a phone's sensor frame feels reversed.
+
+Direct SSAP connections write these deltas straight to the input socket
+(`WebOsClient.moveNow`). Companion-proxy mode coalesces samples into one
+HTTP `/command` at a time so a high sensor rate cannot flood the TV. The sensor
+is registered only while the Cursor tab is visible and the toggle is on; the
+touchpad remains usable alongside it.
+
+This is a relative pointer, not LG Magic Remote emulation: it cannot provide
+absolute screen coordinates, hover-to-click gestures, or motion gestures that
+webOS reserves for the official remote.
 
 ### Known limitations
 
@@ -187,6 +213,11 @@ Other webOS versions may differ; the limitations below still apply.
   the app reports failures honestly.
 - Cursor control only affects surfaces that accept mouse input. Apps that draw
   their own pointer may ignore `move`/`click`.
+- Air mouse accuracy depends on the phone's sensor and how steadily it is held.
+  Game rotation vector has no magnetometer, so yaw is relative to the moment of
+  calibration rather than absolute compass north; slow sensor drift is removed
+  with **Recentre**. Some phones report a mirrored sensor frame; use Invert X/Y
+  if left/right or up/down feels reversed.
 
 ## Protocol attribution
 
