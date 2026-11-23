@@ -1,6 +1,6 @@
 # Luma TV Remote 2.0 — UI/UX Refinement Report (Phase 3A)
 
-**Status:** complete at code/build level. This phase refined the existing UI only. No feature was added or removed, and no functional/protocol behaviour was touched.
+**Status:** complete and manually verified on the real TV by the user. This phase refined the existing UI only. No feature was added or removed, and no functional/protocol behaviour was touched.
 
 **Module:** `:tvremote2` (`com.luma.tvremote2`, debug `com.luma.tvremote2.debug`). The gallery `app/`, `tvcompanion/`, the legacy `tvremote/` fallback and all `core/`, `platform/`, `network/` and `input/` sources were left unchanged.
 
@@ -104,11 +104,14 @@ Touch target audit on Remote: D-pad keys 192px (64dp), section buttons 168px (56
 
 These were captured with `adb screencap` after explicit approval. During capture only navigation taps were used; no TV command (volume, power, playback, pointer) was sent by automation. The assistant cannot visually open images in this session, so the screenshots need the user's visual review; the layout audit above is programmatic (UI hierarchy bounds), not a human visual judgement.
 
-## Remaining issues / user actions
+## Manual verification (user)
 
-- **Manual regression is still required on the real TV**: Remote buttons, D-pad, volume, playback, power, touchpad, air mouse, keyboard, apps, inputs, search, music, cast, pairing and the calibration wizard. Behaviour was not changed, but Compose layout was rewritten on every screen.
-- **Find TV automatic scan** is still not manually verified (already open from the previous phase).
-- Screenshots need a visual once-over by the user.
+After the Phase 3A build was installed, the user reported that **everything is working** on the real TV/phone. This covers the rewritten Remote, Cursor, Keyboard, Apps, More, Inputs, Search, Music and Cast layouts and the shared header/navigation. No regression was reported.
+
+## Remaining issues
+
+- **Find TV automatic scan** was not explicitly called out in the final confirmation; manual IP connect remains the verified path (already open from the previous phase).
+- Screenshots were captured but not visually reviewed by the assistant; they are available for the user's reference.
 - No UI tests were added; the module has no test harness yet.
 
 ## Modified files
