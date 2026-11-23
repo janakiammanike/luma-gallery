@@ -1,6 +1,7 @@
 # Build output
 build/
 .gradle/
+.gradle.zip
 .kotlin/
 app/build/
 webui/node_modules/

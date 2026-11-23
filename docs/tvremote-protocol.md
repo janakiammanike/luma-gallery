@@ -65,10 +65,21 @@ python verify_ipk.py       # checks ar + tar structure
 python test_proxy.py       # mock SSAP server; verifies beacon/status/proxy
 ```
 
-Install the `.ipk` with the LG webOS SDK (`ares-install`) while the TV's Dev
-Mode is active, or sideload it from USB. On this TV, Dev Mode SSH listens on
-**port 9922** (not 22) and uses the legacy `ssh-rsa` host key; modern OpenSSH
-needs `-o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa`.
+Install with the official CLI (the deprecated `ares-cli@0.4.9` is broken here;
+`@webos-tools/cli` 3.2.6 works). Keep the TV's **Developer Mode app open** with
+**Key Server ON**, then run:
+
+```powershell
+cd tvcompanion
+.\install_tv.ps1 -Passphrase '<passphrase shown in the Developer Mode app>'
+```
+
+The script registers `root@TV:9922`, fetches the SSH key from the TV's key
+server on port 9991, installs and launches the app, then verifies
+`http://TV:8081/status`. Sideloading the `.ipk` from USB also works. On this TV,
+Dev Mode SSH listens on **port 9922** (not 22) and uses the legacy `ssh-rsa`
+host key; modern OpenSSH needs `-o HostKeyAlgorithms=+ssh-rsa
+-o PubkeyAcceptedAlgorithms=+ssh-rsa`.
 Verified locally with Node + mock SSAP: beacon, `/status`, `/command` URI and
 input forwarding, and an eight-request cold-start burst. Also verified on the
 real phone (`com.luma.tvremote.debug`) against a mock companion running on the
