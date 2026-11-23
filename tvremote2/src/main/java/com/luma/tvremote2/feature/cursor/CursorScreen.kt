@@ -16,10 +16,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,10 +31,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.luma.tvremote2.core.RemoteViewModel
+import com.luma.tvremote2.designsystem.LumaButton
+import com.luma.tvremote2.designsystem.LumaOutlinedButton
+import com.luma.tvremote2.designsystem.LumaTokens
 import com.luma.tvremote2.designsystem.SectionCard
 import kotlin.math.roundToInt
 
@@ -60,21 +63,33 @@ fun CursorScreen(
         onDispose { vm.stopAirMouse() }
     }
 
+    val touchpadHeight = if (LocalConfiguration.current.screenWidthDp < 360) {
+        LumaTokens.TouchpadHeightCompact
+    } else {
+        LumaTokens.TouchpadHeight
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(LumaTokens.ScreenPadding),
+        verticalArrangement = Arrangement.spacedBy(LumaTokens.SpaceMD)
     ) {
         SectionCard("Air mouse") {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Motion pointer", fontWeight = FontWeight.SemiBold)
                     Text(
-                        "Move the phone left / right / up / down to point. Phone roll is ignored.",
+                        "Motion pointer",
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                    Text(
+                        "Move the phone to point. Phone roll is ignored.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2
                     )
                 }
                 Switch(
@@ -84,56 +99,95 @@ fun CursorScreen(
                 )
             }
 
-            state.airMouseSensor?.let { sensor ->
+            Row(
+                modifier = Modifier.padding(top = LumaTokens.SpaceSM),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(LumaTokens.SpaceSM)
+            ) {
+                val active = state.airMouseEnabled && state.airMouseAvailable
+                Surface(
+                    shape = RoundedCornerShape(LumaTokens.RadiusPill),
+                    color = if (active) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surface
+                    }
+                ) {
+                    Text(
+                        text = if (active) "Active" else "Off",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (active) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier.padding(
+                            horizontal = LumaTokens.SpaceSM,
+                            vertical = LumaTokens.SpaceXS
+                        ),
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
+                state.airMouseSensor?.let { sensor ->
+                    Text(
+                        text = sensor,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                }
+            }
+
+            state.airMouseStatus?.let { status ->
                 Text(
-                    "Sensor: $sensor",
+                    text = status,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 2
                 )
             }
             if (!state.airMouseAvailable) {
                 Text(
-                    "No motion sensor was found on this phone. The touchpad still works normally.",
+                    text = "No motion sensor found. The touchpad still works normally.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-            state.airMouseStatus?.let { status ->
-                Text(
-                    status,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.error,
+                    maxLines = 2
                 )
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.fillMaxWidth().padding(top = LumaTokens.SpaceSM),
+                horizontalArrangement = Arrangement.spacedBy(LumaTokens.SpaceSM)
             ) {
-                OutlinedButton(
+                LumaOutlinedButton(
+                    text = "Calibrate",
                     onClick = vm::recalibrateAirMouse,
                     enabled = state.airMouseEnabled,
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text("Calibrate")
-                }
-                Button(
+                )
+                LumaButton(
+                    text = "Air click",
                     onClick = vm::clickPointer,
-                    enabled = state.airMouseEnabled
-                ) {
-                    Text("Air click")
-                }
+                    enabled = state.airMouseEnabled,
+                    modifier = Modifier.weight(1f)
+                )
             }
-            OutlinedButton(
+            LumaButton(
+                text = "Open calibration wizard",
                 onClick = onCalibration,
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-            ) {
-                Text("Open calibration wizard")
-            }
+                modifier = Modifier.fillMaxWidth().padding(top = LumaTokens.SpaceSM)
+            )
 
             Text(
-                "Sensitivity ${(state.airMouseSensitivity * 10).roundToInt() / 10f}x",
-                style = MaterialTheme.typography.bodySmall
+                text = "Sensitivity ${(state.airMouseSensitivity * 10).roundToInt() / 10f}x",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = LumaTokens.SpaceSM),
+                maxLines = 1,
+                softWrap = false
             )
             Slider(
                 value = state.airMouseSensitivity,
@@ -146,15 +200,27 @@ fun CursorScreen(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(LumaTokens.SpaceSM)
             ) {
-                Text("Invert X", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                Text(
+                    "Invert X",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    softWrap = false
+                )
                 Switch(
                     checked = state.airMouseInvertX,
                     enabled = state.airMouseEnabled,
                     onCheckedChange = vm::setAirMouseInvertX
                 )
-                Text("Invert Y", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                Text(
+                    "Invert Y",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    softWrap = false
+                )
                 Switch(
                     checked = state.airMouseInvertY,
                     enabled = state.airMouseEnabled,
@@ -163,23 +229,25 @@ fun CursorScreen(
             }
 
             Text(
-                "Calibrate once while holding the phone comfortably still. Bias is tracked while the phone is steady, so the pointer does not drift. The sensor stops when you leave this tab.",
+                text = "Bias is tracked while the phone is steady, so the pointer does not drift.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2
             )
         }
 
         SectionCard("Touchpad") {
             Text(
-                "Drag to move the TV cursor. Tap to click. Use Back to return to the previous TV screen.",
+                text = "Drag to move the TV cursor. Tap to click. Use Back to return.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2
             )
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
-                    .padding(vertical = 8.dp)
+                    .height(touchpadHeight)
+                    .padding(vertical = LumaTokens.SpaceSM)
                     .background(
                         MaterialTheme.colorScheme.surfaceVariant,
                         RoundedCornerShape(20.dp)
@@ -218,83 +286,84 @@ fun CursorScreen(
                 Text(
                     "Drag here",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Medium
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.fillMaxWidth().padding(top = LumaTokens.SpaceSM),
+                horizontalArrangement = Arrangement.spacedBy(LumaTokens.SpaceSM)
             ) {
-                OutlinedButton(
+                LumaOutlinedButton(
+                    text = "◀ Back",
                     onClick = { vm.button("BACK") },
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text("◀  Back")
-                }
-                Button(
+                )
+                LumaButton(
+                    text = "OK / Click",
                     onClick = vm::clickPointer,
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text("OK / Click")
-                }
+                )
             }
         }
 
         SectionCard("Scroll") {
             Text(
-                "Scroll up / down / left / right in webOS lists and pages.",
+                text = "Scroll webOS lists and pages.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                softWrap = false
             )
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(top = LumaTokens.SpaceSM),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(LumaTokens.SpaceSM)
             ) {
-                OutlinedButton(
+                LumaOutlinedButton(
+                    text = "▲  Scroll up",
                     onClick = { vm.scroll(0, -160) },
                     modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("▲  Scroll up")
-                }
+                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(LumaTokens.SpaceSM)
                 ) {
-                    OutlinedButton(
+                    LumaOutlinedButton(
+                        text = "◀ Left",
                         onClick = { vm.scroll(-160, 0) },
                         modifier = Modifier.weight(1f)
-                    ) {
-                        Text("◀ Left")
-                    }
-                    Button(onClick = vm::clickPointer) { Text("Click") }
-                    OutlinedButton(
+                    )
+                    LumaButton(
+                        text = "Click",
+                        onClick = vm::clickPointer,
+                        modifier = Modifier.weight(1f)
+                    )
+                    LumaOutlinedButton(
+                        text = "Right ▶",
                         onClick = { vm.scroll(160, 0) },
                         modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Right ▶")
-                    }
+                    )
                 }
-                OutlinedButton(
+                LumaOutlinedButton(
+                    text = "▼  Scroll down",
                     onClick = { vm.scroll(0, 160) },
                     modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("▼  Scroll down")
-                }
-                OutlinedButton(
+                )
+                LumaOutlinedButton(
+                    text = "Recenter cursor (edge bump)",
                     onClick = vm::recenter,
                     modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Recenter cursor (edge bump)")
-                }
+                )
             }
         }
 
         Text(
             text = "The pointer works in webOS apps and browsers that accept mouse input. Some apps draw their own cursor and ignore it.",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 3
         )
     }
 }

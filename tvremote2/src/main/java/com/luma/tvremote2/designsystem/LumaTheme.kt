@@ -40,5 +40,5 @@ private val LightColors = lightColorScheme(
 fun LumaTheme(darkTheme: Boolean? = null, content: @Composable () -> Unit) {
     val dark = darkTheme ?: isSystemInDarkTheme()
     val colors = if (dark) DarkColors else LightColors
-    MaterialTheme(colorScheme = colors, content = content)
+    MaterialTheme(colorScheme = colors, typography = LumaTypography, content = content)
 }

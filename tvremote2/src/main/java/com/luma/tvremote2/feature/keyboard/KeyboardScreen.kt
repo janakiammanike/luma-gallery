@@ -3,49 +3,90 @@ package com.luma.tvremote2.feature.keyboard
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.luma.tvremote2.core.RemoteViewModel
+import com.luma.tvremote2.designsystem.LumaButton
+import com.luma.tvremote2.designsystem.LumaOutlinedButton
+import com.luma.tvremote2.designsystem.LumaTextField
+import com.luma.tvremote2.designsystem.LumaTokens
 import com.luma.tvremote2.designsystem.SectionCard
 
 @Composable
 fun KeyboardScreen(vm: RemoteViewModel, modifier: Modifier = Modifier) {
     val state by vm.ui.collectAsState()
     Column(
-        modifier = modifier.padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .padding(LumaTokens.ScreenPadding),
+        verticalArrangement = Arrangement.spacedBy(LumaTokens.SpaceMD)
     ) {
         SectionCard("Keyboard") {
             Text(
-                "Type text and send it to the TV's on-screen keyboard.",
+                text = "Type text and send it to the TV's on-screen keyboard.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2
             )
-            OutlinedTextField(
+            LumaTextField(
                 value = state.keyboardText,
                 onValueChange = vm::onKeyboardText,
-                label = { Text("Text to send") },
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                label = "Text to send",
+                modifier = Modifier.padding(top = LumaTokens.SpaceSM)
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = vm::sendKeyboardText, modifier = Modifier.weight(1f)) {
-                    Text("Send")
-                }
-                Button(onClick = vm::backspace, modifier = Modifier.weight(1f)) {
-                    Text("⌫ Backspace")
-                }
-                Button(onClick = vm::enter, modifier = Modifier.weight(1f)) {
-                    Text("Enter ↵")
-                }
+            Row(
+                modifier = Modifier.padding(top = LumaTokens.SpaceMD),
+                horizontalArrangement = Arrangement.spacedBy(LumaTokens.SpaceSM)
+            ) {
+                LumaButton(
+                    text = "Send",
+                    onClick = vm::sendKeyboardText,
+                    modifier = Modifier.weight(1f),
+                    icon = {
+                        Icon(
+                            Icons.Filled.Send,
+                            contentDescription = null,
+                            modifier = Modifier.size(LumaTokens.IconSmall)
+                        )
+                    }
+                )
+                LumaOutlinedButton(
+                    text = "Del",
+                    onClick = vm::backspace,
+                    modifier = Modifier.weight(1f),
+                    icon = {
+                        Icon(
+                            Icons.Filled.Clear,
+                            contentDescription = "Backspace",
+                            modifier = Modifier.size(LumaTokens.IconSmall)
+                        )
+                    }
+                )
+                LumaOutlinedButton(
+                    text = "Enter",
+                    onClick = vm::enter,
+                    modifier = Modifier.weight(1f),
+                    icon = {
+                        Icon(
+                            Icons.Filled.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(LumaTokens.IconSmall)
+                        )
+                    }
+                )
             }
         }
     }

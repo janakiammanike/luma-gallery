@@ -5,19 +5,21 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import com.luma.tvremote2.core.RemoteViewModel
+import com.luma.tvremote2.designsystem.LumaButton
+import com.luma.tvremote2.designsystem.LumaOutlinedButton
+import com.luma.tvremote2.designsystem.LumaTextField
+import com.luma.tvremote2.designsystem.LumaTokens
 import com.luma.tvremote2.designsystem.SectionCard
 
 @Composable
@@ -29,16 +31,23 @@ fun ConnectScreen(vm: RemoteViewModel, onConnected: () -> Unit) {
     }
 
     Column(
-        modifier = Modifier.padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier
+            .verticalScroll(rememberScrollState())
+            .padding(LumaTokens.ScreenPadding),
+        verticalArrangement = Arrangement.spacedBy(LumaTokens.SpaceMD)
     ) {
-        Text("Control your LG TV", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+        Text(
+            "Control your LG TV",
+            style = MaterialTheme.typography.titleLarge,
+            maxLines = 1,
+            softWrap = false
+        )
         Text(
             "Same Wi‑Fi. No LG account needed. Pairing happens on the TV.",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2
         )
-        Text("Wi‑Fi connected  ▮▮▮▮▯", style = MaterialTheme.typography.bodySmall)
 
         SectionCard("Before you connect") {
             listOf(
@@ -47,47 +56,61 @@ fun ConnectScreen(vm: RemoteViewModel, onConnected: () -> Unit) {
                 "3. Accept the pairing prompt that appears on the TV",
                 "4. Ports 3000/3001 must be reachable on the LAN"
             ).forEach {
-                Text(it, style = MaterialTheme.typography.bodySmall)
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 2,
+                    modifier = Modifier.padding(vertical = LumaTokens.SpaceXS)
+                )
             }
         }
 
         SectionCard("TV address") {
-            OutlinedTextField(
+            LumaTextField(
                 value = state.hostInput,
                 onValueChange = vm::onHostInput,
-                label = { Text("TV IP address") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
+                label = "TV IP address",
                 enabled = !state.isConnecting
             )
             if (state.detectedHost != null) {
                 Text(
                     "Found via companion: ${state.detectedHost}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.padding(top = LumaTokens.SpaceXS),
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-            Button(
+            LumaButton(
+                text = if (state.isConnecting) "Connecting…" else "Connect",
                 onClick = { vm.connect() },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !state.isConnecting
+                enabled = !state.isConnecting,
+                modifier = Modifier.fillMaxWidth().padding(top = LumaTokens.SpaceSM)
+            )
+            Row(
+                modifier = Modifier.padding(top = LumaTokens.SpaceSM),
+                horizontalArrangement = Arrangement.spacedBy(LumaTokens.SpaceSM)
             ) {
-                Text(if (state.isConnecting) "Connecting…" else "Connect")
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = vm::discoverCompanion, modifier = Modifier.weight(1f)) {
-                    Text("Find TV")
-                }
-                OutlinedButton(onClick = { vm.connect(state.detectedHost.orEmpty()) }, modifier = Modifier.weight(1f)) {
-                    Text("TV app")
-                }
+                LumaOutlinedButton(
+                    text = "Find TV",
+                    onClick = vm::discoverCompanion,
+                    modifier = Modifier.weight(1f)
+                )
+                LumaOutlinedButton(
+                    text = "TV app",
+                    onClick = { vm.connect(state.detectedHost.orEmpty()) },
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
 
         Text(
             "Luma TV Remote 2.0 · ${state.status}",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2
         )
     }
 }

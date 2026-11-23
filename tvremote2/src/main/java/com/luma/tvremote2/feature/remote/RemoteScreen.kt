@@ -7,19 +7,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.luma.tvremote2.core.RemoteViewModel
+import com.luma.tvremote2.designsystem.LumaAdaptiveRow
+import com.luma.tvremote2.designsystem.LumaDPad
+import com.luma.tvremote2.designsystem.LumaRemoteButton
+import com.luma.tvremote2.designsystem.LumaTokens
 import com.luma.tvremote2.designsystem.SectionCard
 
 @Composable
@@ -30,122 +31,127 @@ fun RemoteScreen(vm: RemoteViewModel, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(LumaTokens.ScreenPadding),
+        verticalArrangement = Arrangement.spacedBy(LumaTokens.SpaceMD)
     ) {
+        // D-pad is the primary control; everything else is arranged around it.
+        SectionCard("D-pad") {
+            LumaDPad(
+                onDirection = { vm.button(it) },
+                onEnter = { vm.button("ENTER") }
+            )
+        }
+
         if (state.audioVolume != null) {
             Text(
-                "Volume: ${state.audioVolume}${if (state.audioMuted) " · Muted" else ""}",
+                text = "Volume: ${state.audioVolume}${if (state.audioMuted) " · Muted" else ""}",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.secondary
+                color = MaterialTheme.colorScheme.secondary,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
             )
         }
 
         if ("system" in groups) {
             SectionCard("System") {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(
-                        "⌂  Home" to "HOME",
-                        "◀  Back" to "BACK",
-                        "⊞  Recent" to "RECENT",
-                        "☰  Menu" to "MENU"
-                    ).forEach { (label, name) ->
-                        OutlinedButton(
-                            onClick = { vm.button(name) },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(label)
-                        }
-                    }
-                }
-            }
-        }
-
-        if ("dpad" in groups) {
-            SectionCard("D-pad") {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Button(onClick = { vm.button("UP") }) { Text("▲") }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { vm.button("LEFT") }) { Text("◀") }
-                        Button(onClick = { vm.button("ENTER") }) { Text("OK") }
-                        Button(onClick = { vm.button("RIGHT") }) { Text("▶") }
-                    }
-                    Button(onClick = { vm.button("DOWN") }) { Text("▼") }
+                LumaAdaptiveRow(
+                    items = listOf(
+                        "Home" to "HOME",
+                        "Back" to "BACK",
+                        "Recent" to "RECENT",
+                        "Menu" to "MENU"
+                    ),
+                    minItemWidth = 80.dp
+                ) { (label, name), itemModifier ->
+                    LumaRemoteButton(label, { vm.button(name) }, itemModifier)
                 }
             }
         }
 
         if ("scroll" in groups) {
             SectionCard("Scroll") {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { vm.scroll(-200, 0) }, modifier = Modifier.weight(1f)) {
-                        Text("◀ Left")
-                    }
-                    OutlinedButton(onClick = { vm.scroll(0, -200) }, modifier = Modifier.weight(1f)) {
-                        Text("▲ Up")
-                    }
-                    OutlinedButton(onClick = { vm.scroll(0, 200) }, modifier = Modifier.weight(1f)) {
-                        Text("▼ Down")
-                    }
-                    OutlinedButton(onClick = { vm.scroll(200, 0) }, modifier = Modifier.weight(1f)) {
-                        Text("Right ▶")
-                    }
+                LumaAdaptiveRow(
+                    items = listOf(
+                        Triple("◀ Left", -200, 0),
+                        Triple("▲ Up", 0, -200),
+                        Triple("▼ Down", 0, 200),
+                        Triple("Right ▶", 200, 0)
+                    ),
+                    minItemWidth = 80.dp
+                ) { (label, dx, dy), itemModifier ->
+                    LumaRemoteButton(
+                        label = label,
+                        onClick = { vm.scroll(dx, dy) },
+                        modifier = itemModifier
+                    )
                 }
             }
         }
 
         if ("volume" in groups) {
             SectionCard("Volume & channels") {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = vm::volumeDown, modifier = Modifier.weight(1f)) {
-                        Text("Vol −")
-                    }
-                    OutlinedButton(onClick = vm::toggleMute, modifier = Modifier.weight(1f)) {
-                        Text("Mute")
-                    }
-                    OutlinedButton(onClick = vm::volumeUp, modifier = Modifier.weight(1f)) {
-                        Text("Vol +")
-                    }
-                    OutlinedButton(onClick = vm::channelDown, modifier = Modifier.weight(1f)) {
-                        Text("Ch −")
-                    }
-                    OutlinedButton(onClick = vm::channelUp, modifier = Modifier.weight(1f)) {
-                        Text("Ch +")
-                    }
+                LumaAdaptiveRow(
+                    items = listOf(
+                        "Vol −" to 0,
+                        "Mute" to 1,
+                        "Vol +" to 2,
+                        "Ch −" to 3,
+                        "Ch +" to 4
+                    ),
+                    minItemWidth = 72.dp
+                ) { (label, action), itemModifier ->
+                    LumaRemoteButton(
+                        label = label,
+                        onClick = {
+                            when (action) {
+                                0 -> vm.volumeDown()
+                                1 -> vm.toggleMute()
+                                2 -> vm.volumeUp()
+                                3 -> vm.channelDown()
+                                else -> vm.channelUp()
+                            }
+                        },
+                        modifier = itemModifier
+                    )
                 }
             }
         }
 
         if ("playback" in groups) {
             SectionCard("Playback") {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = vm::rewind, modifier = Modifier.weight(1f)) {
-                        Text("⏮")
-                    }
-                    OutlinedButton(onClick = vm::play, modifier = Modifier.weight(1f)) {
-                        Text("▶")
-                    }
-                    OutlinedButton(onClick = vm::pause, modifier = Modifier.weight(1f)) {
-                        Text("⏸")
-                    }
-                    OutlinedButton(onClick = vm::stop, modifier = Modifier.weight(1f)) {
-                        Text("⏹")
-                    }
-                    OutlinedButton(onClick = vm::fastForward, modifier = Modifier.weight(1f)) {
-                        Text("⏭")
-                    }
+                LumaAdaptiveRow(
+                    items = listOf("⏮", "▶", "⏸", "⏹", "⏭"),
+                    minItemWidth = 64.dp
+                ) { label, itemModifier ->
+                    LumaRemoteButton(
+                        label = label,
+                        onClick = {
+                            when (label) {
+                                "⏮" -> vm.rewind()
+                                "▶" -> vm.play()
+                                "⏸" -> vm.pause()
+                                "⏹" -> vm.stop()
+                                else -> vm.fastForward()
+                            }
+                        },
+                        modifier = itemModifier
+                    )
                 }
             }
         }
 
         if ("power" in groups) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = vm::powerOn, modifier = Modifier.weight(1f)) {
-                    Text("Power on TV")
-                }
-                OutlinedButton(onClick = vm::powerOff, modifier = Modifier.weight(1f)) {
-                    Text("Power off TV")
-                }
+            LumaAdaptiveRow(
+                items = listOf("Power on TV" to true, "Power off TV" to false),
+                minItemWidth = 120.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) { (label, on), itemModifier ->
+                LumaRemoteButton(
+                    label = label,
+                    onClick = { if (on) vm.powerOn() else vm.powerOff() },
+                    modifier = itemModifier
+                )
             }
         }
 
@@ -155,35 +161,26 @@ fun RemoteScreen(vm: RemoteViewModel, modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            val options = listOf(
-                "system" to "System", "dpad" to "D-pad", "scroll" to "Scroll",
-                "volume" to "Volume", "playback" to "Playback", "power" to "Power"
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                options.take(3).forEach { (key, label) ->
-                    FilterChip(
-                        selected = key in groups,
-                        onClick = { vm.toggleGroup(key) },
-                        label = { Text(label) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                options.drop(3).forEach { (key, label) ->
-                    FilterChip(
-                        selected = key in groups,
-                        onClick = { vm.toggleGroup(key) },
-                        label = { Text(label) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+            LumaAdaptiveRow(
+                items = listOf(
+                    "system" to "System",
+                    "dpad" to "D-pad",
+                    "scroll" to "Scroll",
+                    "volume" to "Volume",
+                    "playback" to "Playback",
+                    "power" to "Power"
+                ),
+                minItemWidth = 104.dp,
+                modifier = Modifier.padding(top = LumaTokens.SpaceSM)
+            ) { (key, label), itemModifier ->
+                FilterChip(
+                    selected = key in groups,
+                    onClick = { vm.toggleGroup(key) },
+                    label = {
+                        Text(label, maxLines = 1, softWrap = false)
+                    },
+                    modifier = itemModifier.fillMaxWidth()
+                )
             }
         }
 
@@ -191,7 +188,7 @@ fun RemoteScreen(vm: RemoteViewModel, modifier: Modifier = Modifier) {
             text = "Tip: use the Cursor tab for the air mouse and the Keyboard tab to type into TV search boxes.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Normal
+            maxLines = 3
         )
     }
 }

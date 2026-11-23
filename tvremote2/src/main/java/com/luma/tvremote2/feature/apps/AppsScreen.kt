@@ -5,12 +5,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -20,8 +21,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.luma.tvremote2.core.RemoteViewModel
+import com.luma.tvremote2.designsystem.LumaOutlinedButton
+import com.luma.tvremote2.designsystem.LumaTextField
+import com.luma.tvremote2.designsystem.LumaTokens
 import com.luma.tvremote2.designsystem.SectionCard
 
 @Composable
@@ -39,53 +42,65 @@ fun AppsScreen(vm: RemoteViewModel, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(LumaTokens.ScreenPadding),
+        verticalArrangement = Arrangement.spacedBy(LumaTokens.SpaceMD)
     ) {
         SectionCard("Apps") {
-            OutlinedTextField(
+            LumaTextField(
                 value = filter,
                 onValueChange = { filter = it },
-                label = { Text("Filter apps") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                label = "Filter apps",
+                leadingIcon = {
+                    Icon(
+                        Icons.Filled.Search,
+                        contentDescription = null,
+                        modifier = Modifier.size(LumaTokens.IconSmall)
+                    )
+                }
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
+            Row(
+                modifier = Modifier.padding(top = LumaTokens.SpaceSM),
+                horizontalArrangement = Arrangement.spacedBy(LumaTokens.SpaceSM)
+            ) {
+                LumaOutlinedButton(
+                    text = "Search TV",
                     onClick = { vm.searchTvFor(filter) },
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text("Search TV")
-                }
-                OutlinedButton(onClick = vm::loadApps, modifier = Modifier.weight(1f)) {
-                    Text("Reload")
-                }
+                )
+                LumaOutlinedButton(
+                    text = "Reload",
+                    onClick = vm::loadApps,
+                    modifier = Modifier.weight(1f)
+                )
             }
             Text(
                 text = if (state.apps.isEmpty()) {
-                    "0 app(s)\nNo apps returned by the TV. Tap Reload."
+                    "No apps returned by the TV. Tap Reload."
                 } else {
                     "${apps.size} of ${state.apps.size} app(s)"
                 },
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = LumaTokens.SpaceSM),
+                maxLines = 2
             )
             state.message?.let {
                 Text(
                     text = it,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = LumaTokens.SpaceXS),
+                    maxLines = 2
                 )
             }
         }
 
         apps.forEach { app ->
-            OutlinedButton(
+            LumaOutlinedButton(
+                text = "${app.title}  ·  ${app.id}",
                 onClick = { vm.launchApp(app.id) },
                 modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("${app.title}  ·  ${app.id}", modifier = Modifier.weight(1f))
-            }
+            )
         }
     }
 }
