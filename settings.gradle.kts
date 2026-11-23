@@ -22,4 +22,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "JanakApps"
 include(":app")
-include(":tvremote")
