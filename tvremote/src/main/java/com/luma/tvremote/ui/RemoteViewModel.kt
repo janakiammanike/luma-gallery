@@ -373,54 +373,61 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
             stopAirMouse()
             client?.close()
 
-            // A remembered IP goes stale after DHCP renewal. ARP is best effort
-            // (blocked on some Android builds), so a failed connect triggers a
-            // LAN re-scan and retry — that works on every phone.
+            // Prefer the TV companion when it is installed. It knows the TV's
+            // current IP and forwards SSAP to the TV's own localhost, so this
+            // works even if ports 3000/3001 are blocked to the phone. If the
+            // proxy is unavailable, fall back to the normal direct connection.
             var host = resolveTvIp(requestedHost)
-            var result = attemptConnect(host)
-            var moved = host != requestedHost
+            val companion = CompanionScanner.probe(requestedHost)
+                ?: CompanionScanner.listen(1_500)
+            var result: ConnectResult
+            var moved: Boolean
+            if (companion != null) {
+                _ui.update {
+                    it.copy(
+                        companion = companion,
+                        companionStatus = "Companion proxy · TV at ${companion.host}"
+                    )
+                }
+                host = companion.host
+                result = attemptConnect(host, companion)
+                moved = host != requestedHost
+            } else {
+                result = attemptConnect(host)
+                moved = host != requestedHost
+            }
+
+            if (result is ConnectResult.Failure) {
+                _ui.update {
+                    it.copy(message = "${result.message} — trying a direct connection…")
+                }
+                if (companion != null) {
+                    result = attemptConnect(host)
+                    if (result is ConnectResult.Success) {
+                        _ui.update { it.copy(companionStatus = "Connected directly to the TV") }
+                    }
+                }
+            }
 
             if (result is ConnectResult.Failure) {
                 _ui.update {
                     it.copy(message = "${result.message} — looking for the TV on this Wi‑Fi…")
                 }
-                // The TV companion knows the current IP and can forward SSAP
-                // to the TV's own localhost even when this phone cannot reach
-                // ports 3000/3001 (AP isolation, firewall, etc.).
-                val companion = CompanionScanner.probe(requestedHost)
-                    ?: CompanionScanner.listen(2_000)
-                if (companion != null) {
-                    _ui.update {
-                        it.copy(
-                            companion = companion,
-                            companionStatus = "Companion reports TV at ${companion.host}"
-                        )
+                val candidates = linkedSetOf<String>()
+                if (companion != null) candidates.add(companion.host)
+                candidates.addAll(LanScanner.scan(getApplication()))
+                for (candidate in candidates) {
+                    if (candidate == host) continue
+                    if (store.keyFor(candidate).isNullOrBlank()) {
+                        store.keyFor(host)?.takeIf { it.isNotBlank() }
+                            ?.let { key -> store.saveKey(candidate, key) }
                     }
-                    val proxied = attemptConnect(companion.host, companion)
-                    if (proxied is ConnectResult.Success) {
-                        host = companion.host
-                        result = proxied
-                        moved = host != requestedHost
-                    }
-                }
-
-                if (result is ConnectResult.Failure) {
-                    val candidates = linkedSetOf<String>()
-                    if (companion != null) candidates.add(companion.host)
-                    candidates.addAll(LanScanner.scan(getApplication()))
-                    for (candidate in candidates) {
-                        if (candidate == host) continue
-                        if (store.keyFor(candidate).isNullOrBlank()) {
-                            store.keyFor(host)?.takeIf { it.isNotBlank() }
-                                ?.let { key -> store.saveKey(candidate, key) }
-                        }
-                        val retry = attemptConnect(candidate)
-                        if (retry is ConnectResult.Success) {
-                            host = candidate
-                            result = retry
-                            moved = true
-                            break
-                        }
+                    val retry = attemptConnect(candidate)
+                    if (retry is ConnectResult.Success) {
+                        host = candidate
+                        result = retry
+                        moved = true
+                        break
                     }
                 }
             }

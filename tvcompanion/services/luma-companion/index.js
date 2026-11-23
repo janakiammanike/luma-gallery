@@ -147,6 +147,8 @@ function ensureSsap(key, callback) {
   connectWaiters.push(callback);
   if (ssapConnecting) return;
   ssapConnecting = true;
+  // Dispose FIRST: it resets the remembered key. Setting the key afterwards
+  // would silently drop a stored pairing key and force a TV pairing prompt.
   disposeSsap();
   registeredKey = key || null;
 

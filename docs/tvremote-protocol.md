@@ -51,9 +51,10 @@ as `clientKey` in `/status` so the phone can persist it.
 
 On the phone, `WebOsClient` has a proxy mode: all 25 commands still call the
 same methods, but `request()`, `sendOnly()` and `sendInput()` go over HTTP to the
-companion instead of WebSockets. `connect()` tries direct SSAP first, then falls
-back to the companion proxy, then to a subnet scan. A failed direct connection
-costs about 2.5 s before the fallback starts.
+companion instead of WebSockets. `connect()` now **prefers the companion proxy**
+when a beacon is seen (1.5 s listen), then falls back to direct SSAP and finally
+to a subnet scan. This keeps all traffic on the LAN while exercising the same
+HTTP command path used when ports 3000/3001 are blocked to the phone.
 
 Build/install:
 
@@ -86,7 +87,22 @@ real phone (`com.luma.tvremote.debug`) against a mock companion running on the
 PC LAN address: the **TV app** button discovered the beacon and filled the IP,
 Connect fell back to the proxy, and D-pad/scroll/keyboard commands and app-list
 requests arrived at the mock TV SSAP. Only one pointer socket is opened even
-with rapid input. On-TV install verification still needs the Dev Mode passphrase.
+with rapid input. On-TV install is now verified with the real passphrase: the
+`.ipk` installs and the app launches.
+
+**webOS 4.1 quirk:** this TV's SAM did not register the JS service from the
+installed manifest during the live session (`Service does not exist` on
+`luna://com.luma.tvcompanion.service/status`), even though the files and
+`packageinfo.json` are correct. A TV reboot should refresh SAM's cached app
+manifest. Until then the service can be started manually over Dev Mode SSH:
+
+```sh
+nohup node /media/developer/apps/usr/palm/applications/com.luma.tvcompanion/services/luma-companion/index.js >/tmp/luma-companion.log 2>&1 &
+```
+
+The phone's **TV app** discovery and proxy connection were verified against this
+running service: phone connections to `192.168.1.2:8081` were observed, and the
+companion opened the TV's localhost pointer socket for input commands.
 
 ## Verified on real hardware
 
@@ -162,12 +178,14 @@ The Cursor tab can drive the TV pointer by moving the phone. It uses
 `TYPE_GAME_ROTATION_VECTOR` when present and falls back to
 `TYPE_ROTATION_VECTOR`; no new Android permission is required. At start (and on
 **Recentre**, or when Android's display rotation changes) the current pose is
-saved as the reference. Each later sample is converted with
+saved as the previous sample. Each sample is converted with
 `SensorManager.getRotationMatrixFromVector` + `getOrientation`, and only the
-**yaw** and **pitch** differences from that reference are used. **Roll is
+**yaw** and **pitch** change since the previous sample is used. **Roll is
 ignored**, so twisting the phone in its own plane does not drag the pointer.
-The delta is dead-zone filtered, low-pass smoothed, scaled by the saved
-sensitivity, clamped, and mapped through the current display rotation before
+Because this is angular velocity rather than absolute tilt, holding the phone
+still stops the cursor instead of pinning it to a screen corner. The delta is
+dead-zone filtered, low-pass smoothed, scaled by the saved sensitivity,
+clamped, and mapped through the current display rotation before
 being sent as the same relative `type:move\ndx:…\ndy:…` messages the touchpad
 sends. Invert X/Y flips either axis if a phone's sensor frame feels reversed.
 

@@ -37,16 +37,31 @@ function Ares($name, [string[]]$arguments) {
     if ($LASTEXITCODE -ne 0) { throw "$name failed with exit code $LASTEXITCODE" }
 }
 
+function TryAres($name, [string[]]$arguments) {
+    try {
+        Ares $name $arguments
+        return $true
+    } catch {
+        return $false
+    }
+}
+
 Write-Host "Target TV: $Ip  (Developer Mode app must be open, Key Server ON)"
 
-# (Re)create the device entry. ares-setup-device -a merges on this CLI version.
-Ares 'ares-setup-device' @(
-    '-a', $Device,
+# Add the device if it is new; modify the existing entry otherwise. Some CLI
+# versions reject -a when the name already exists instead of merging it.
+$deviceArgs = @(
     '-i', 'username=root',
     '-i', "host=$Ip",
     '-i', 'port=9922',
     '-i', 'default=true'
 )
+$deviceAddArgs = @('-a', $Device) + $deviceArgs
+$deviceModifyArgs = @('-m', $Device) + $deviceArgs
+if (-not (TryAres 'ares-setup-device' $deviceAddArgs)) {
+    Write-Host "Device already exists - updating it..."
+    Ares 'ares-setup-device' $deviceModifyArgs
+}
 
 if (-not $SkipKey) {
     Write-Host 'Fetching the SSH key from the TV key server (port 9991)…'

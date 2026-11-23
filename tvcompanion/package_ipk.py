@@ -15,6 +15,7 @@ VERSION = "1.0.0"
 OUTPUT = os.path.join(HERE, "{}_{}_all.ipk".format(APP_ID, VERSION))
 
 PAYLOAD_FILES = [
+    "packageinfo.json",
     "appinfo.json",
     "index.html",
     "app.css",
@@ -55,6 +56,7 @@ def make_control_tar_gz():
         "Maintainer: Luma\n"
         "Section: misc\n"
         "Description: Luma TV companion LAN discovery beacon\n"
+        "WebOS-Package-Format-Version: 2\n"
     ).format(APP_ID, VERSION).encode("utf-8")
     out = io.BytesIO()
     with tarfile.open(fileobj=out, mode="w:gz") as tar:

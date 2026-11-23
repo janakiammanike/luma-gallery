@@ -14,11 +14,12 @@ import kotlin.math.roundToInt
  * Turns phone tilt into the same relative pointer deltas the touchpad sends.
  *
  * The rotation vector sensor already expresses orientation in a world frame,
- * so this controller only compares the current orientation with a calibrated
- * reference. Roll is deliberately not used: rotating the phone in its own plane
- * should not drag the TV pointer. The small delta is low-pass filtered and
- * mapped through the current Android display rotation before it is handed to
- * WebOsClient.move(dx, dy).
+ * so this controller compares each sample with the previous one. Pointer speed
+ * therefore follows how fast the phone is turning; holding it still stops the
+ * cursor instead of pinning it to a corner. Roll is deliberately not used:
+ * rotating the phone in its own plane should not drag the TV pointer. The delta
+ * is low-pass filtered and mapped through the current Android display rotation
+ * before it is handed to WebOsClient.move(dx, dy).
  */
 class AirMouseController(
     context: Context,
@@ -35,9 +36,9 @@ class AirMouseController(
     private val rotationVector = FloatArray(4)
     private val rotationMatrix = FloatArray(9)
     private val orientation = FloatArray(3)
-    private val reference = FloatArray(3)
+    private val previous = FloatArray(3)
 
-    private var hasReference = false
+    private var hasPrevious = false
     private var active = false
     private var lastEventNs = 0L
     private var lastRotation = -1
@@ -64,9 +65,9 @@ class AirMouseController(
         this.invertY = invertY
     }
 
-    /** Start from the phone's current pose. The next sensor sample sets zero. */
+    /** Forget the previous sample so no leftover motion is applied. */
     fun calibrate() {
-        hasReference = false
+        hasPrevious = false
         smoothedX = 0f
         smoothedY = 0f
         lastEventNs = 0L
@@ -119,21 +120,19 @@ class AirMouseController(
         SensorManager.getOrientation(rotationMatrix, orientation)
 
         val rotation = currentRotation()
-        if (!hasReference || rotation != lastRotation) {
-            reference[0] = orientation[0]
-            reference[1] = orientation[1]
-            reference[2] = orientation[2]
-            hasReference = true
-            lastRotation = rotation
-            smoothedX = 0f
-            smoothedY = 0f
+        if (!hasPrevious || rotation != lastRotation) {
+            rememberPose(rotation)
             return
         }
 
         // getOrientation returns azimuth(yaw), pitch and roll in radians. Only
         // the first two are used, so phone roll is ignored by construction.
-        val yaw = shortestAngle(orientation[0] - reference[0])
-        val pitch = (orientation[1] - reference[1]).coerceIn(-MAX_ANGLE, MAX_ANGLE)
+        // Use the CHANGE since the previous sample, not the angle from a fixed
+        // reference: tilting 5° and holding still must move the pointer a little,
+        // then stop. Otherwise the cursor pins itself to a screen corner.
+        val yaw = shortestAngle(orientation[0] - previous[0])
+        val pitch = (orientation[1] - previous[1]).coerceIn(-MAX_ANGLE, MAX_ANGLE)
+        rememberPose(rotation)
 
         val (screenX, screenY) = when (rotation) {
             Surface.ROTATION_90 -> pitch to yaw
@@ -156,6 +155,14 @@ class AirMouseController(
         if (dx != 0 || dy != 0) onMove(dx, dy)
     }
 
+    private fun rememberPose(rotation: Int) {
+        previous[0] = orientation[0]
+        previous[1] = orientation[1]
+        previous[2] = orientation[2]
+        hasPrevious = true
+        lastRotation = rotation
+    }
+
     private fun currentRotation(): Int = try {
         @Suppress("DEPRECATION")
         windowManager.defaultDisplay?.rotation ?: Surface.ROTATION_0
@@ -172,11 +179,11 @@ class AirMouseController(
 
     private companion object {
         const val MIN_INTERVAL_NS = 12_000_000L // ~80 Hz upper bound
-        const val SMOOTHING = 0.45f
-        const val DEADZONE = 0.0035f // ~0.2°, removes hand tremor
-        const val PIXELS_PER_RADIAN = 900f // ~16 px per degree at 1x
-        const val MAX_STEP = 180
-        const val MAX_ANGLE = 1.2f
+        const val SMOOTHING = 0.35f
+        const val DEADZONE = 0.0018f // per-sample radians; removes hand tremor
+        const val PIXELS_PER_RADIAN = 420f // ~7 px per degree of rotation at 1x
+        const val MAX_STEP = 48
+        const val MAX_ANGLE = 0.25f // per-sample clamp; ignores sudden flips
         const val PI = 3.14159265f
         const val TWO_PI = 6.2831853f
     }
