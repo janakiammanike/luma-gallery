@@ -38,6 +38,13 @@ fun CastScreen(vm: RemoteViewModel, modifier: Modifier = Modifier) {
             Button(onClick = vm::openMirroring, modifier = Modifier.fillMaxWidth()) {
                 Text("Open screen mirroring")
             }
+            state.message?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }

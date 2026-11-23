@@ -50,11 +50,10 @@ fun RemoteApp(vm: RemoteViewModel) {
     var showSettings by remember { mutableStateOf(false) }
     val connected = state.connectedHost != null
 
+    // Keep the message in state so it stays visible on screen (a snackbar can
+    // be hidden behind the phone's soft keyboard while typing).
     LaunchedEffect(state.message) {
-        state.message?.let {
-            snackbar.showSnackbar(it)
-            vm.consumeMessage()
-        }
+        state.message?.let { snackbar.showSnackbar(it) }
     }
 
     Scaffold(

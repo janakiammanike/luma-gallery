@@ -51,6 +51,13 @@ fun InputsScreen(vm: RemoteViewModel, modifier: Modifier = Modifier) {
                     modifier = Modifier.fillMaxWidth()
                 ) { Text(label) }
             }
+            state.message?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }

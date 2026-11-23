@@ -15,6 +15,7 @@ import com.luma.tvremote2.platform.webos.WebOsProtocol.ENDPOINT_VOLUME_DOWN
 import com.luma.tvremote2.platform.webos.WebOsProtocol.ENDPOINT_VOLUME_UP
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -84,7 +85,11 @@ class LgWebOsPlatform(
     }
 
     /** Sends an SSAP command through the companion proxy. */
-    private suspend fun request(uri: String, payload: Map<String, Any> = emptyMap()): JSONObject =
+    private suspend fun request(
+        uri: String,
+        payload: Map<String, Any?> = emptyMap(),
+        timeoutMs: Long = 5_000
+    ): JSONObject = withTimeout(timeoutMs) {
         withContext(Dispatchers.IO) {
             val current = beacon ?: error("Not connected to a TV")
             val body = JSONObject()
@@ -105,6 +110,7 @@ class LgWebOsPlatform(
             }
             response
         }
+    }
 
     /** Sends a newline-delimited input frame (buttons, pointer, scroll). */
     private suspend fun sendInput(frame: String) = withContext(Dispatchers.IO) {
@@ -186,75 +192,50 @@ class LgWebOsPlatform(
         request(ENDPOINT_LAUNCH_APP, mapOf("id" to id))
     }
 
-    override suspend fun searchOnTv(query: String): String {
-        if (query.isBlank()) return "Type something to search"
-        return try {
-            request("com.webos.service.search/search", mapOf("query" to query))
-            "TV search opened for \"$query\""
-        } catch (_: Exception) {
-            try {
-                request(
-                    ENDPOINT_LAUNCH_APP,
-                    mapOf("id" to "com.webos.app.search", "params" to mapOf("query" to query))
-                )
-                "Search app launched for \"$query\""
-            } catch (_: Exception) {
-                "Search is not exposed by this TV firmware. Use the Keyboard tab in TV search."
-            }
-        }
-    }
+    override suspend fun searchOnTv(query: String): String = WebOsOptionalFeatures.searchOnTv(
+        request = { uri, payload, timeout -> request(uri, payload, timeoutMs = timeout) },
+        apps = { apps() },
+        query = query
+    )
 
-    override suspend fun openAppSearch(appId: String, query: String): String {
-        if (query.isBlank()) return "Type something to search"
-        val encoded = java.net.URLEncoder.encode(query, "UTF-8")
-        val candidates = when {
-            appId.contains("youtube", ignoreCase = true) -> listOf(
-                "youtube://results?search_query=$encoded",
-                "youtube://search?q=$encoded"
-            )
-            appId.contains("netflix", ignoreCase = true) -> listOf(
-                "nflix://search?query=$encoded"
-            )
-            else -> emptyList()
-        }
-        for (uri in candidates) {
-            try {
-                request(
-                    ENDPOINT_LAUNCH_APP,
-                    mapOf("id" to appId, "params" to mapOf("uri" to uri))
-                )
-                return "Opened $appId search for \"$query\""
-            } catch (_: Exception) {
-                // Firmware may reject this URI form; try the next one.
-            }
-        }
-        return try {
-            launchApp(appId)
-            "Opened $appId. Use its search box, then the Keyboard tab to type \"$query\"."
-        } catch (e: Exception) {
-            "Could not open $appId: ${e.message ?: "launch failed"}"
-        }
-    }
+    override suspend fun openAppSearch(appId: String, query: String): String =
+        WebOsOptionalFeatures.openAppSearch(
+            request = { uri, payload, timeout -> request(uri, payload, timeoutMs = timeout) },
+            apps = { apps() },
+            keyword = appId,
+            query = query
+        )
 
     override suspend fun selectInput(inputAppId: String) {
         request(ENDPOINT_LAUNCH_APP, mapOf("id" to inputAppId))
     }
 
     override suspend fun playMediaUrl(url: String) {
-        request(
-            ENDPOINT_LAUNCH_APP,
-            mapOf(
-                "id" to "com.webos.app.mediadiscovery",
-                "params" to mapOf("uri" to url, "mediaUrl" to url)
+        val mediaApp = apps().firstOrNull {
+            it.id.contains("mediadiscovery", ignoreCase = true) ||
+                it.title.contains("media", ignoreCase = true)
+        }?.id ?: "com.webos.app.mediadiscovery"
+        try {
+            request(
+                ENDPOINT_LAUNCH_APP,
+                mapOf("id" to mediaApp, "params" to mapOf("uri" to url, "mediaUrl" to url)),
+                timeoutMs = 4_000
             )
-        )
+        } catch (e: Exception) {
+            error("Could not open the TV media player: ${e.message ?: "launch failed"}")
+        }
     }
 
     override suspend fun openScreenMirroring() {
-        request(
-            ENDPOINT_LAUNCH_APP,
-            mapOf("id" to "sooltrstudio.screenmirroring.receiver")
-        )
+        val candidate = apps().firstOrNull {
+            it.id.contains("mirror", ignoreCase = true) ||
+                it.title.contains("mirror", ignoreCase = true)
+        } ?: error("No screen mirroring app is installed on this TV")
+        try {
+            request(ENDPOINT_LAUNCH_APP, mapOf("id" to candidate.id), timeoutMs = 4_000)
+        } catch (e: Exception) {
+            error("Could not open ${candidate.title}: ${e.message ?: "launch failed"}")
+        }
     }
 
     override suspend fun audioVolume(): Int? {

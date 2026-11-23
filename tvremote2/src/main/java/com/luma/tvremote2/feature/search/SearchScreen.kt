@@ -35,11 +35,13 @@ fun SearchScreen(vm: RemoteViewModel, modifier: Modifier = Modifier) {
             Button(onClick = vm::searchTv, modifier = Modifier.fillMaxWidth()) {
                 Text("Search TV")
             }
-            Text(
-                "Recent searches: —",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            state.message?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }

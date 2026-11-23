@@ -35,7 +35,13 @@ fun MusicScreen(vm: RemoteViewModel, modifier: Modifier = Modifier) {
             Button(onClick = vm::sendMusic, modifier = Modifier.fillMaxWidth()) {
                 Text("Send to TV")
             }
-            Text("Now playing: —", style = MaterialTheme.typography.bodySmall)
+            state.message?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }
