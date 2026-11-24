@@ -13,6 +13,7 @@ object Routes {
     const val SEARCH = "search"
     const val MUSIC = "music"
     const val CAST = "cast"
+    const val HOST = "host"
     const val SETTINGS = "settings"
 }
 
@@ -31,5 +32,6 @@ val moreItems = listOf(
     NavItem(Routes.INPUTS, "Inputs & sound", ""),
     NavItem(Routes.SEARCH, "Content search", ""),
     NavItem(Routes.MUSIC, "Music to TV", ""),
-    NavItem(Routes.CAST, "Cast & mirror", "")
+    NavItem(Routes.CAST, "Cast & mirror", ""),
+    NavItem(Routes.HOST, "Companion Host", "")
 )

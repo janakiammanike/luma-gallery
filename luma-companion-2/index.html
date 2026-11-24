@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>Luma Browser · Companion 2.0</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/browser.css" />
+  </head>
+  <body>
+    <div id="browser-app" class="browser-shell app-shell">
+      <header id="browser-topbar" class="browser-topbar" aria-label="Browser tabs"></header>
+
+      <div id="browser-navbar" class="browser-navbar" aria-label="Navigation and address bar"></div>
+
+      <div class="browser-workspace">
+        <aside id="browser-sidebar" class="browser-sidebar is-collapsed" aria-label="Browser side menu"></aside>
+
+        <main class="browser-main">
+          <div id="browser-frames" class="browser-frames" aria-label="Website views"></div>
+
+          <section id="browser-screen" class="browser-screen" aria-label="Browser screen"></section>
+
+          <div id="suggestion-layer" class="suggestion-layer" aria-label="Address suggestions"></div>
+
+          <div id="browser-overlay" class="browser-overlay" aria-label="Page status"></div>
+
+          <section id="companion-screen" class="companion-screen" aria-label="Companion dashboard">
+            <section class="hero" aria-labelledby="hero-title">
+              <div>
+                <p class="hero-kicker">LOCAL-ONLY TV APP</p>
+                <h2 id="hero-title">Companion controls,<br />right where you need them.</h2>
+                <p class="hero-copy">
+                  The LAN session opens only while this app is foregrounded. Bookmarks, history and
+                  tabs stay on this TV. No cloud, no TV listener, no DRM assumption.
+                </p>
+              </div>
+              <div class="hero-orbit" aria-hidden="true">
+                <div class="orbit-ring ring-one"></div>
+                <div class="orbit-ring ring-two"></div>
+                <div class="orbit-core">2.0</div>
+              </div>
+            </section>
+
+            <section class="card-grid" aria-label="Companion dashboard">
+              <article class="card card-wide" data-focusable="true" tabindex="-1">
+                <div class="card-head">
+                  <div class="card-icon icon-link" aria-hidden="true">◎</div>
+                  <div>
+                    <h3>Connection Status</h3>
+                    <p class="card-subtitle">Manual LAN session to the Android host</p>
+                  </div>
+                  <span class="badge badge-info" id="connection-badge">IDLE</span>
+                </div>
+                <p class="status-line"><span class="dot dot-idle" id="connection-dot"></span><strong id="connection-state">No session</strong></p>
+                <p class="card-body" id="connection-detail">
+                  Enter the phone's LAN IPv4 address and host port. The channel opens only while this app is foregrounded.
+                </p>
+                <div class="connection-form">
+                  <label class="field">
+                    <span>Phone IP</span>
+                    <input id="host-input" type="text" value="192.168.1.3" placeholder="192.168.1.3" autocomplete="off" spellcheck="false" data-focusable="true" tabindex="-1" />
+                  </label>
+                  <label class="field field-port">
+                    <span>Port</span>
+                    <input id="port-input" type="text" value="8787" inputmode="numeric" autocomplete="off" spellcheck="false" data-focusable="true" tabindex="-1" />
+                  </label>
+                  <button id="connect-button" class="button" type="button" data-focusable="true" tabindex="-1">Connect</button>
+                  <button id="disconnect-button" class="button button-muted button-inline" type="button" data-focusable="true" tabindex="-1" disabled>Disconnect</button>
+                </div>
+                <div class="connection-meta">
+                  <div><span>Session</span><strong id="connection-session">—</strong></div>
+                  <div><span>Handshake</span><strong id="connection-handshake">Not started</strong></div>
+                  <div><span>Retry attempt</span><strong id="connection-attempt">0</strong></div>
+                  <div><span>Protocol</span><strong id="connection-protocol">0 valid · 0 rejected</strong></div>
+                </div>
+              </article>
+
+              <article class="card" data-focusable="true" tabindex="-1">
+                <div class="card-head">
+                  <div class="card-icon icon-companion" aria-hidden="true">✦</div>
+                  <div>
+                    <h3>Companion Status</h3>
+                    <p class="card-subtitle">Foreground web app</p>
+                  </div>
+                </div>
+                <p class="status-line"><span class="dot dot-good"></span><strong id="companion-state">Foreground only</strong></p>
+                <p class="card-body" id="companion-detail">
+                  No JS service, no TCP listener and no UDP beacon exist on the TV. The outbound channel closes on hide.
+                </p>
+              </article>
+
+              <article class="card card-wide" data-focusable="true" tabindex="-1">
+                <div class="card-head">
+                  <div class="card-icon icon-platform" aria-hidden="true">▣</div>
+                  <div>
+                    <h3>Platform Information</h3>
+                    <p class="card-subtitle">Detected from the TV runtime</p>
+                  </div>
+                  <span class="badge badge-info" id="platform-webos">DETECTING</span>
+                </div>
+                <dl class="info-grid">
+                  <div><dt>App ID</dt><dd id="platform-app-id">com.luma.companion2</dd></div>
+                  <div><dt>Version</dt><dd id="platform-version">0.1.0</dd></div>
+                  <div><dt>Web engine</dt><dd id="platform-engine">Detecting…</dd></div>
+                  <div><dt>System bridge</dt><dd id="platform-bridge">Detecting…</dd></div>
+                  <div><dt>TV model</dt><dd id="platform-model">Detecting…</dd></div>
+                  <div><dt>SDK version</dt><dd id="platform-sdk">Detecting…</dd></div>
+                </dl>
+              </article>
+
+              <article class="card card-wide" data-focusable="true" tabindex="-1">
+                <div class="card-head">
+                  <div class="card-icon icon-diagnostics" aria-hidden="true">⌁</div>
+                  <div>
+                    <h3>Diagnostics Status</h3>
+                    <p class="card-subtitle">Honest, local-only checks</p>
+                  </div>
+                  <button id="refresh-button" class="button button-small" type="button" data-focusable="true" tabindex="-1">
+                    Refresh
+                  </button>
+                </div>
+                <div class="diagnostic-grid">
+                  <div><span>Lifecycle</span><strong id="diagnostics-lifecycle">Initializing</strong></div>
+                  <div><span>Network</span><strong id="diagnostics-network">Detecting</strong></div>
+                  <div><span>Storage</span><strong id="diagnostics-storage">Checking</strong></div>
+                  <div><span>Protocol handler</span><strong id="diagnostics-protocol">Idle · no session</strong></div>
+                  <div><span>Telemetry</span><strong id="diagnostics-telemetry">Off · not enabled</strong></div>
+                  <div><span>Last update</span><strong id="last-updated">—</strong></div>
+                </div>
+              </article>
+            </section>
+          </section>
+        </main>
+      </div>
+
+      <footer class="browser-statusbar">
+        <span>BROWSER · <strong id="browser-status-page">New Tab</strong></span>
+        <span id="browser-status-tabs">1 tab</span>
+        <span class="status-spacer"></span>
+        <span>SESSION · <strong id="browser-status-remote">IDLE</strong></span>
+        <span>NETWORK · <strong id="browser-status-network">Detecting</strong></span>
+      </footer>
+    </div>
+
+    <script src="js/remote-contract.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/diagnostics.js"></script>
+    <script src="js/remote-session.js"></script>
+    <script src="js/browser-view.js"></script>
+    <script src="js/browser-model.js"></script>
+    <script src="js/browser-components.js"></script>
+    <script src="js/browser-controller.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>

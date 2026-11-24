@@ -23,7 +23,11 @@ import com.luma.tvremote2.designsystem.LumaTokens
 import com.luma.tvremote2.designsystem.SectionCard
 
 @Composable
-fun ConnectScreen(vm: RemoteViewModel, onConnected: () -> Unit) {
+fun ConnectScreen(
+    vm: RemoteViewModel,
+    onConnected: () -> Unit,
+    onHost: () -> Unit = {}
+) {
     val state by vm.ui.collectAsState()
 
     LaunchedEffect(state.connectedHost) {
@@ -106,8 +110,22 @@ fun ConnectScreen(vm: RemoteViewModel, onConnected: () -> Unit) {
             }
         }
 
+        SectionCard("Luma Companion 2.0") {
+            Text(
+                "Use Companion Host when the TV runs Luma Companion 2.0. The TV connects to this phone; no LG account is needed.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 3
+            )
+            LumaOutlinedButton(
+                text = "Open Companion Host",
+                onClick = onHost,
+                modifier = Modifier.fillMaxWidth().padding(top = LumaTokens.SpaceSM)
+            )
+        }
+
         Text(
-            "Luma TV Remote 2.0 · ${state.status}",
+            "Luma TV Remote 3.0.0 · ${state.status}",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 2

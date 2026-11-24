@@ -39,6 +39,7 @@ import com.luma.tvremote2.feature.calibration.CalibrationScreen
 import com.luma.tvremote2.feature.cast.CastScreen
 import com.luma.tvremote2.feature.connect.ConnectScreen
 import com.luma.tvremote2.feature.cursor.CursorScreen
+import com.luma.tvremote2.feature.host.HostScreen
 import com.luma.tvremote2.feature.inputs.InputsScreen
 import com.luma.tvremote2.feature.keyboard.KeyboardScreen
 import com.luma.tvremote2.feature.more.MoreDialog
@@ -156,7 +157,13 @@ fun RemoteApp(vm: RemoteViewModel) {
             startDestination = Routes.CONNECT,
             modifier = Modifier.padding(padding)
         ) {
-            composable(Routes.CONNECT) { ConnectScreen(vm, onConnected = { nav.navigate(Routes.REMOTE) }) }
+            composable(Routes.CONNECT) {
+                ConnectScreen(
+                    vm = vm,
+                    onConnected = { nav.navigate(Routes.REMOTE) },
+                    onHost = { nav.navigate(Routes.HOST) }
+                )
+            }
             composable(Routes.REMOTE) { RemoteScreen(vm) }
             composable(Routes.CURSOR) {
                 CursorScreen(vm, onCalibration = { nav.navigate(Routes.CALIBRATION) })
@@ -170,6 +177,7 @@ fun RemoteApp(vm: RemoteViewModel) {
             composable(Routes.SEARCH) { SearchScreen(vm) }
             composable(Routes.MUSIC) { MusicScreen(vm) }
             composable(Routes.CAST) { CastScreen(vm) }
+            composable(Routes.HOST) { HostScreen() }
         }
     }
 
@@ -189,5 +197,5 @@ fun RemoteApp(vm: RemoteViewModel) {
 }
 
 private val moreRoutes = setOf(
-    Routes.INPUTS, Routes.SEARCH, Routes.MUSIC, Routes.CAST
+    Routes.INPUTS, Routes.SEARCH, Routes.MUSIC, Routes.CAST, Routes.HOST
 )

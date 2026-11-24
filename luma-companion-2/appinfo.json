@@ -1,0 +1,18 @@
+{
+  "id": "com.luma.companion2",
+  "version": "0.1.0",
+  "vendor": "Luma",
+  "type": "web",
+  "main": "index.html",
+  "title": "Luma Companion 2",
+  "requiredACG": ["systemconfig.query"],
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "appDescription": "Local-only dashboard for Luma TV Remote 2.0",
+  "resolution": "1920x1080",
+  "iconColor": "#7C3AED",
+  "splashColor": "#0B0714",
+  "splashBackground": "assets/splash.png",
+  "handlesRelaunch": false,
+  "disableBackHistoryAPI": false
+}
