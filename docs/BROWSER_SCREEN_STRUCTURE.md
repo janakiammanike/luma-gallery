@@ -25,6 +25,7 @@ The browser keeps the Phase 1/2 dashboard as a **Companion** screen instead of r
 │       ├── #browser-screen      home / bookmarks / history / tabs / settings / video
 │       ├── #suggestion-layer    address suggestions
 │       ├── #browser-overlay     loading, error and Stop/Retry controls
+│       ├── #browser-notice      plain-language toast for rejected/blocked navigation
 │       └── #companion-screen    preserved Phase 1/2 dashboard
 └── .browser-statusbar           page, tab count, session, network
 ```
@@ -52,6 +53,7 @@ The status bar is always visible and informational; it has no fake action.
 | `browser-screen` | browser screens | `browser-components.js` via controller | Cleared on the page and companion screens. |
 | `suggestion-layer` | suggestions | `browser-controller.js` | Opened only from address/home inputs. |
 | `browser-overlay` | loading/error | `browser-controller.js` | Holds working Stop or Retry button. |
+| `browser-notice` | blocked navigation | `browser-controller.js` | Non-focusable `role="status"` toast; toggles `is-visible`. |
 | `companion-screen` | Phase 1/2 dashboard | `app.js` | Kept hidden on browser screens. |
 | `browser-status-page` | status | `browser-controller.js` | Sanitized address or `New Tab`. |
 | `browser-status-tabs` | status | `browser-controller.js` | Tab count. |
@@ -184,7 +186,9 @@ that the user opened locally; it is never sent as telemetry. The status bar and 
 
 - Iframe sandbox deliberately excludes `allow-same-origin`, `allow-top-navigation`,
   `allow-popups` and `allow-downloads`.
-- Third-party sites may block framing through X-Frame-Options or CSP. The app reports the frame
+- Third-party sites may block framing through X-Frame-Options or CSP. On webOS this can replace the
+  whole app with `loaderror.html?errorCode=-27`; the model rejects known blocking hosts before
+  frame creation and shows `#browser-notice`. Unknown blockers are not promised. The app reports the frame
   result honestly and never promises a site works.
 - No system-browser Luna launch, DRM player, HLS/DASH pipeline, cookie editor, download
   manager or native-4K claim exists.

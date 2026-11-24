@@ -82,10 +82,10 @@ Historical evidence is in `docs/PHASE_3_BROWSER_TEST_RESULTS.md`; current eviden
 
 ## Remaining acceptance gate
 
-1. Install the already regenerated `com.luma.companion2` IPK on `lumatv` when the user asks.
+1. ~~Install the already regenerated `com.luma.companion2` IPK on `lumatv`.~~ Done; live Home-screen rendering was confirmed through DevTools.
 2. Install `tvremote2` 3.0.0 on the phone and open **Companion Host** from the Connect screen.
 3. Start the endpoint on port `8787` and approve the TV peer.
-4. Send Open Page with an absolute http(s) address and confirm the TV frame loads or honestly reports a rejected frame.
+4. Send Open Page with an absolute http(s) address and confirm the TV frame loads or honestly reports a rejected frame. Known framing blockers such as Google, GitHub, YouTube and DuckDuckGo are now refused locally with a visible notice; Bing, Wikipedia and example.com were confirmed loading on device.
 5. Send Close Page and confirm the frame resets.
 6. Hide the TV app and confirm both the socket and frame close.
 7. Capture Magic Remote input and visual rendering; no TV screenshot tool is available through CLI alone.

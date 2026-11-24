@@ -20,17 +20,40 @@
     duckduckgo: { name: 'DuckDuckGo', prefix: 'https://html.duckduckgo.com/html/?q=' }
   };
 
+  /*
+   * LG webOS turns a frame load blocked by X-Frame-Options / CSP into a
+   * top-level "Application Error" page with errorCode=-27. That kills the app
+   * shell, so these hosts are rejected before an iframe is created. The list
+   * is conservative and can grow when a device test confirms another host.
+   */
+  var FRAME_BLOCKED_HOSTS = [
+    'google.com',
+    'youtube.com',
+    'youtu.be',
+    'duckduckgo.com',
+    'github.com',
+    'reddit.com',
+    'facebook.com',
+    'instagram.com',
+    'twitter.com',
+    'x.com',
+    'linkedin.com',
+    'amazon.com',
+    'netflix.com'
+  ];
+
+  var FRAME_BLOCKED_MESSAGE =
+    'This site blocks in-app framing on LG webOS. Try Bing, Wikipedia or example.com.';
+
   var DEFAULT_SHORTCUTS = [
-    { id: 'sc_google', title: 'Google', url: 'https://www.google.com' },
-    { id: 'sc_youtube', title: 'YouTube', url: 'https://www.youtube.com' },
+    { id: 'sc_bing', title: 'Bing', url: 'https://www.bing.com' },
     { id: 'sc_wikipedia', title: 'Wikipedia', url: 'https://www.wikipedia.org' },
-    { id: 'sc_github', title: 'GitHub', url: 'https://github.com' },
-    { id: 'sc_reddit', title: 'Reddit', url: 'https://www.reddit.com' }
+    { id: 'sc_example', title: 'Example', url: 'https://example.com' }
   ];
 
   var DEFAULT_SETTINGS = {
-    homepage: 'https://www.google.com',
-    searchEngine: 'google',
+    homepage: 'https://www.bing.com',
+    searchEngine: 'bing',
     startup: 'newtab',
     accent: 'violet',
     zoom: 100,
@@ -180,6 +203,31 @@
     if (isArray(saved.shortcuts) && saved.shortcuts.length) {
       state.shortcuts = saved.shortcuts.slice(0, MAX_SHORTCUTS);
     }
+
+    /* Migrate settings saved before the framing-block guard existed. */
+    if (isFrameBlocked(state.settings.homepage)) state.settings.homepage = DEFAULT_SETTINGS.homepage;
+    if (state.settings.searchEngine === 'google' || state.settings.searchEngine === 'duckduckgo') {
+      state.settings.searchEngine = DEFAULT_SETTINGS.searchEngine;
+    }
+    var safeShortcuts = [];
+    var seenShortcut = {};
+    for (var s = 0; s < state.shortcuts.length; s += 1) {
+      var shortcut = state.shortcuts[s];
+      if (!shortcut || !shortcut.url || isFrameBlocked(shortcut.url)) continue;
+      if (seenShortcut[shortcut.url]) continue;
+      seenShortcut[shortcut.url] = true;
+      safeShortcuts.push(shortcut);
+    }
+    for (var d = 0; d < DEFAULT_SHORTCUTS.length && safeShortcuts.length < MAX_SHORTCUTS; d += 1) {
+      var fallback = DEFAULT_SHORTCUTS[d];
+      if (!seenShortcut[fallback.url]) {
+        seenShortcut[fallback.url] = true;
+        safeShortcuts.push(copy(fallback));
+      }
+    }
+    state.shortcuts = safeShortcuts;
+    persist();
+
     if (state.settings.startup === 'restore' && isArray(saved.tabs) && saved.tabs.length) {
       state.tabs = saved.tabs.slice(0, MAX_TABS);
       state.activeTabId = saved.activeTabId || state.tabs[0].id;
@@ -232,6 +280,22 @@
     return value.length > 90 ? value.substring(0, 87) + '…' : value;
   }
 
+  function isFrameBlocked(url) {
+    var host = '';
+    try {
+      var parser = global.document.createElement('a');
+      parser.href = String(url);
+      host = (parser.hostname || '').toLowerCase();
+    } catch (error) {
+      return false;
+    }
+    for (var i = 0; i < FRAME_BLOCKED_HOSTS.length; i += 1) {
+      var blocked = FRAME_BLOCKED_HOSTS[i];
+      if (host === blocked || host.slice(-(blocked.length + 1)) === '.' + blocked) return true;
+    }
+    return false;
+  }
+
   function resolveAddress(raw) {
     if (typeof raw !== 'string') return { ok: false, reason: 'Address required.' };
     var value = raw.replace(/^\s+|\s+$/g, '');
@@ -241,8 +305,12 @@
     var validator = global.LumaBrowserView && global.LumaBrowserView.validateUrl;
     if (typeof validator === 'function') {
       var checked = validator(value);
-      if (checked.ok) return { ok: true, url: checked.url };
+      if (checked.ok) {
+        if (isFrameBlocked(checked.url)) return { ok: false, reason: FRAME_BLOCKED_MESSAGE, blocked: true };
+        return { ok: true, url: checked.url };
+      }
     } else if (/^https?:\/\//i.test(value)) {
+      if (isFrameBlocked(value)) return { ok: false, reason: FRAME_BLOCKED_MESSAGE, blocked: true };
       return { ok: true, url: value };
     }
 
@@ -250,16 +318,22 @@
       value = 'https://' + value;
       if (typeof validator === 'function') {
         var implied = validator(value);
-        if (implied.ok) return { ok: true, url: implied.url };
+        if (implied.ok) {
+          if (isFrameBlocked(implied.url)) return { ok: false, reason: FRAME_BLOCKED_MESSAGE, blocked: true };
+          return { ok: true, url: implied.url };
+        }
       }
     }
 
-    var engine = ENGINES[state.settings.searchEngine] || ENGINES.google;
+    var engine = ENGINES[state.settings.searchEngine] || ENGINES.bing;
     var query = value;
     if (typeof validator === 'function') {
       var searchUrl = engine.prefix + encodeURIComponent(query);
       var searchChecked = validator(searchUrl);
-      if (searchChecked.ok) return { ok: true, url: searchChecked.url, search: true };
+      if (searchChecked.ok) {
+        if (isFrameBlocked(searchChecked.url)) return { ok: false, reason: FRAME_BLOCKED_MESSAGE, blocked: true };
+        return { ok: true, url: searchChecked.url, search: true };
+      }
     }
     return { ok: false, reason: 'Enter an absolute http(s) address or a search term.' };
   }
@@ -634,6 +708,7 @@
     isBookmarked: isBookmarked,
     isDirectVideo: isDirectVideo,
     resolveAddress: resolveAddress,
+    isFrameBlocked: isFrameBlocked,
     engines: ENGINES,
     setScreen: setScreen,
     toggleSidebar: toggleSidebar,

@@ -52,8 +52,8 @@ npm run check
 ```
 
 Local verification harnesses in the temporary workspace cover the contract (11/11), storage
-(8/8), DOM/metadata wiring, URL/frame lifecycle (38/38), browser model (48/48), components
-(61/61), controller/focus (38/38) and remote session (26/26). See `docs/BROWSER_UI_TEST_RESULTS.md`.
+(8/8), DOM/metadata wiring, URL/frame lifecycle (38/38), browser model (66/66), components
+(61/61), controller/focus (41/41) and remote session (26/26). See `docs/BROWSER_UI_TEST_RESULTS.md`.
 
 ## Package and install
 
@@ -73,10 +73,13 @@ The user's Developer Mode passphrase is stored only in the CLI device list and
 is not written to this project.
 
 The Phase 2 IPK was packaged, installed, launched and confirmed running on the
-physical LG TV. The current full-browser IPK has been regenerated locally after all static and
-stub-DOM checks passed, but it has **not** been installed or launched in this run. Visual
-rendering, Magic Remote input, in-app Luna permission, the real TV-to-phone handshake and frame
-rendering remain unverified by capture. The TV was unreachable from this PC during the attempt.
+physical LG TV. The current full-browser IPK was also installed and launched on `lumatv`; a live
+DevTools inspection confirmed the tab bar, address bar, Home screen and 56 focus markers at
+1920 × 1080 CSS / DPR 2. The `errorCode=-27` Enter/Search crash on Google and other frame-blocking
+sites was reproduced and fixed: the app now refuses those hosts before creating an iframe, shows a
+visible notice, and loads Bing searches successfully. Physical Magic Remote input, in-app Luna
+permission and the real TV-to-phone handshake still need manual acceptance.
+See `docs/BROWSER_UI_TEST_RESULTS.md`.
 
 ## Remote session test flow
 

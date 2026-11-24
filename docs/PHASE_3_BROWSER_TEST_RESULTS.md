@@ -65,12 +65,16 @@ acceptance evidence. Current results are:
 ## Device state at this time
 
 The original Phase 3 IPK was not installed in that run. A later full-browser IPK was regenerated
-at `luma-companion-2/ipk/com.luma.companion2_0.1.0_all.ipk`, but it has **not** been installed or
-launched. Physical TV rendering, Magic Remote input and the real phone handshake remain manual
-acceptance items.
+at `luma-companion-2/ipk/com.luma.companion2_0.1.0_all.ipk`, then installed and launched on
+`lumatv`. A live DevTools inspection confirmed the browser shell and Home screen rendering.
+Page navigation, Magic Remote input and the real phone handshake remain manual acceptance items.
+A later live run reproduced the TV `errorCode=-27` crash on Google/GitHub/YouTube/DuckDuckGo and
+fixed it with a pre-frame host denylist, a visible notice toast and Bing defaults; current evidence
+is in `docs/BROWSER_UI_TEST_RESULTS.md`.
 
-The last confirmed live Phase 2 process was PID `15834`. The TV was unreachable in the current
-run (`ares-device -i -d lumatv` timed out; port `9922` was closed from this PC).
+The earlier unreachable state cleared after the user supplied the Developer Mode passphrase
+again; the already configured `lumatv` CLI entry was used. The passphrase was not written to
+files, docs, logs or commits. Current device evidence is in `docs/BROWSER_UI_TEST_RESULTS.md`.
 
 ## Not verified
 

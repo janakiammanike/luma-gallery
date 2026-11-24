@@ -229,6 +229,12 @@
     updateViewportInfo();
     applyAccent(snapshot.settings);
 
+    var notice = byId('browser-notice');
+    if (notice) {
+      notice.textContent = snapshot.notice || '';
+      notice.className = 'browser-notice' + (snapshot.notice ? ' is-visible' : '');
+    }
+
     if (nodes.topbar) nodes.topbar.innerHTML = ui.tabBar(snapshot, state.overflowOpen);
     if (nodes.navbar) nodes.navbar.innerHTML = ui.navigationBar(snapshot);
     if (nodes.sidebar) {

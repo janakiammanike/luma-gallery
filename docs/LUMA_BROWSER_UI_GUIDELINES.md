@@ -2,7 +2,8 @@
 
 **Date:** 2026-11-25  
 **Applies to:** `luma-companion-2` 0.1.0, packaged webOS app `com.luma.companion2`  
-**Status:** implemented UI foundation; physical TV rendering not captured in this run.
+**Status:** implemented UI foundation; live TV rendering and Enter/Search verified through DevTools.
+Physical Magic Remote input is still a manual acceptance item.
 
 ## 1. Design intent
 
@@ -86,8 +87,10 @@ dark; there is no unimplemented light-theme switch.
 ## 6. Screen rules
 
 ### Home / New Tab
-- Search field uses the configured engine; Google is the default.
-- Quick Access is a user-editable shortcut grid, not a navigation restriction.
+- Search field uses the configured engine; Bing is the default because it was verified to load
+  inside the TV iframe. Google and DuckDuckGo are rejected before load with a visible notice.
+- Quick Access starts with Bing, Wikipedia and Example, and is user-editable; it is not a
+  navigation restriction. Blocked shortcut URLs are removed during settings migration.
 - Frequently visited, Recently opened, Bookmarks and Recent tabs are separate sections.
 - Empty sections show a plain-language empty state, never a dead button.
 
@@ -126,6 +129,7 @@ project architecture.
 | Initial launch | Home screen with detected engine/viewport foot and real shortcuts. |
 | Page loading | Overlay with sanitized address and a working Stop button. |
 | Slow / blocked frame | 18 s watchdog reports that the site may block in-app framing, with Retry. |
+| Known framing blocker | `browser-notice` toast explains the refusal before any iframe is created; the app shell stays alive. |
 | Offline | Status bar shows `OFFLINE`; Home/connection text explains that local addresses can still be used. |
 | Navigation failure | Overlay gives a plain message and Retry; technical codes are not primary text. |
 | No bookmarks / history | Empty state with the action that creates the first entry. |
@@ -145,8 +149,10 @@ project architecture.
 
 - Sandbox is `allow-scripts allow-forms`; no `allow-same-origin`, no top-level navigation,
   no popups and no page data reads.
-- Third-party sites may refuse framing through X-Frame-Options or CSP; the app reports the
-  frame's own load result and never claims a site works.
+- Third-party sites may refuse framing through X-Frame-Options or CSP. On LG webOS a blocked
+  frame can replace the whole app with `loaderror.html?errorCode=-27`. Known offenders are
+  rejected in `browser-model.js` before the iframe is created, and the reason is shown in the
+  `browser-notice` toast. Sites outside that denylist are still not promised to work.
 - No system-browser launch is attempted. The old LG browser guide URL was 404 and the exact
   Luna payload was not verified.
 - No DRM, HLS/DASH, download API, cookie editor, site-permission editor or native 4K claim.
