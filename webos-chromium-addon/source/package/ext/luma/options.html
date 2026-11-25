@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Luma Settings</title>
+  <link rel="stylesheet" href="shared/theme.css">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <h1>Luma Settings</h1>
+  <p>These settings stay on this TV. No telemetry, no account and no cloud sync.</p>
+
+  <div class="card">
+    <label class="row">
+      <input id="showDiagnostics" type="checkbox">
+      <span>Show diagnostics in the Luma popup</span>
+    </label>
+  </div>
+
+  <h2>Quick Access Links</h2>
+  <div id="linkList" class="card"></div>
+  <div class="row">
+    <input id="newTitle" type="text" placeholder="Title">
+    <input id="newUrl" type="url" placeholder="https://example.com" autofocus>
+    <button id="addLink">Add Link</button>
+  </div>
+
+  <h2>Phone Controls</h2>
+  <div class="card note">
+    This extension opens an outbound WebSocket to the phone Host after you enter its LAN address.
+    It never opens a TV listener, native messaging host or LS2 service. Approve the TV on the phone
+    before any command is accepted. Air Mouse and phone keyboard stay in the Companion app.
+  </div>
+  <div class="card">
+    <label class="row">
+      <span>Phone IPv4</span>
+      <input id="remoteHost" type="text" inputmode="numeric" placeholder="192.168.1.3">
+      <input id="remotePort" type="number" min="1" max="65535" value="8787">
+    </label>
+    <div class="row">
+      <button id="remoteConnect" class="primary">Connect</button>
+      <button id="remoteDisconnect">Disconnect</button>
+      <span id="remoteStatus" class="note">No session.</span>
+    </div>
+  </div>
+
+  <div class="row">
+    <button id="save" class="primary">Save Settings</button>
+    <a class="button" href="home.html">Back to Luma Home</a>
+  </div>
+
+  <div id="status" class="status" role="status"></div>
+
+  <script src="shared/bus.js"></script>
+  <script src="shared/remote-focus.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

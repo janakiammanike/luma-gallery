@@ -1,0 +1,7 @@
+body { max-width: 820px; }
+#linkList ul { list-style: none; margin: 0; padding: 0; }
+#linkList li { display: flex; align-items: center; gap: 12px; min-height: 56px; border-bottom: 1px solid var(--luma-border); }
+#linkList li:last-child { border-bottom: 0; }
+#linkList .title { flex: 0 0 180px; font-weight: 600; }
+#linkList .url { flex: 1; color: var(--luma-muted); overflow-wrap: anywhere; font-size: 18px; }
+label.row input[type="checkbox"] { flex: 0 0 auto; min-height: 40px; width: 40px; height: 40px; }

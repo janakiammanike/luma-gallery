@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Luma Cinema Control Panel</title>
+  <link rel="stylesheet" href="shared/theme.css">
+  <link rel="stylesheet" href="cinema.css">
+</head>
+<body>
+  <header class="row">
+    <h1>Luma Cinema</h1>
+    <a class="button" href="home.html">Luma Home</a>
+    <button id="resetAll" class="primary">Reset to Default</button>
+  </header>
+  <p class="note">Separate Luma control panel. Chromium's tabs, toolbar, menus and player UI are untouched.</p>
+
+  <div id="status" class="status" role="status"></div>
+
+  <section class="card">
+    <h2>Luma Playback Surface</h2>
+    <p class="note">This video element is owned by Luma. It does not replace or patch a website player.</p>
+    <video id="lumaVideo" controls muted playsinline style="width:100%"></video>
+    <div class="row">
+      <input id="lumaUrl" type="url" placeholder="https://.../video.mp4" style="flex:1;min-width:260px">
+      <button id="loadUrl" class="primary">Load</button>
+      <button id="playPause">Play / Pause</button>
+      <button id="fullscreen">Fullscreen</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Media Information</h2>
+    <pre id="mediaInfo">Not inspected.</pre>
+    <div class="row"><button id="inspect">Inspect active tab media</button></div>
+  </section>
+
+  <section class="card">
+    <h2>Picture</h2>
+    <div class="row"><label>Movie Mode <select id="movieMode"></select></label><button id="applyMovie">Apply</button></div>
+    <div class="row grid" id="pictureControls"></div>
+    <div class="row"><button id="originalPicture" class="primary">Original Picture</button></div>
+  </section>
+
+  <section class="card">
+    <h2>Sound</h2>
+    <div class="row"><label>Audio Profile <select id="audioProfile"></select></label><button id="applyAudio">Apply</button></div>
+    <div class="row grid" id="audioControls"></div>
+    <div class="row"><button id="originalAudio" class="primary">Original Audio</button></div>
+  </section>
+
+  <section class="card">
+    <h2>Capabilities</h2>
+    <pre id="capabilities">Not probed.</pre>
+    <div class="row"><button id="diagnostics">Run Diagnostics</button><button id="benchmark">Benchmark WebGL</button></div>
+  </section>
+
+  <script src="shared/bus.js"></script>
+  <script src="shared/remote-focus.js"></script>
+  <script src="media/capability.js"></script>
+  <script src="media/codecs.js"></script>
+  <script src="media/hls.js"></script>
+  <script src="media/detector.js"></script>
+  <script src="media/video-engine.js"></script>
+  <script src="media/video-analyzer.js"></script>
+  <script src="media/video-enhancement.js"></script>
+  <script src="media/upscaling.js"></script>
+  <script src="media/audio-engine.js"></script>
+  <script src="media/audio-decoder.js"></script>
+  <script src="media/bluetooth-audio.js"></script>
+  <script src="media/av-sync.js"></script>
+  <script src="media/profiles.js"></script>
+  <script src="media/diagnostics.js"></script>
+  <script src="media/engine.js"></script>
+  <script src="cinema.js"></script>
+</body>
+</html>

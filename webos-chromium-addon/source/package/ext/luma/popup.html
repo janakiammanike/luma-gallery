@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Luma Features</title>
+  <link rel="stylesheet" href="shared/theme.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <h1>Luma <span class="badge">TV</span></h1>
+  <p>Quick access and page controls. Browser UI, bookmarks and tabs stay exactly as they are.</p>
+
+  <div class="row">
+    <a class="button" href="home.html" autofocus>Open Luma Home</a>
+    <a class="button" href="options.html">Settings</a>
+  </div>
+
+  <h2>Quick Access</h2>
+  <div id="links" class="grid"></div>
+
+  <h2>Current Tab</h2>
+  <div id="tab" class="card">Loading…</div>
+  <div class="row">
+    <button data-action="back">Back</button>
+    <button data-action="forward">Forward</button>
+    <button data-action="reload">Reload</button>
+    <button data-action="close">Close Tab</button>
+  </div>
+
+  <h2>Video On This Page</h2>
+  <div class="row">
+    <button data-action="play">Play</button>
+    <button data-action="pause">Pause</button>
+    <button data-action="toggle">Play / Pause</button>
+    <button data-action="mute">Mute</button>
+  </div>
+  <div class="row">
+    <button data-action="probe">Check Codec Support</button>
+  </div>
+  <div id="probe" class="card" hidden></div>
+
+  <h2>Diagnostics</h2>
+  <div id="hw" class="card">Loading…</div>
+
+  <div id="status" class="status" role="status"></div>
+
+  <script src="shared/bus.js"></script>
+  <script src="shared/remote-focus.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

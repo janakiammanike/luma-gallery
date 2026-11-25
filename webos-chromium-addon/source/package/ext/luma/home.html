@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Luma Home</title>
+  <link rel="stylesheet" href="shared/theme.css">
+  <link rel="stylesheet" href="home.css">
+</head>
+<body>
+  <header class="row">
+    <h1>Luma Home</h1>
+    <a class="button" href="popup.html">Controls</a>
+    <a class="button" href="cinema.html">Cinema</a>
+    <a class="button" href="options.html">Settings</a>
+  </header>
+  <p>Open a favourite site in the existing Chromium tab strip. The browser's own New Tab page is unchanged.</p>
+
+  <h2>Quick Access</h2>
+  <div id="links" class="grid"></div>
+
+  <h2>Open a Site</h2>
+  <div class="row">
+    <input id="url" type="url" placeholder="https://example.com" autofocus>
+    <button id="open" class="primary">Open</button>
+  </div>
+
+  <div id="status" class="status" role="status"></div>
+
+  <script src="shared/bus.js"></script>
+  <script src="shared/remote-focus.js"></script>
+  <script src="home.js"></script>
+</body>
+</html>
