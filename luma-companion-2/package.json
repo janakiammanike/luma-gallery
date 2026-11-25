@@ -4,7 +4,7 @@
   "private": true,
   "description": "Foreground dashboard and opt-in LAN remote session for the independent Luma Companion 2.0 webOS TV app",
   "scripts": {
-    "check": "node --check js/remote-contract.js && node --check js/storage.js && node --check js/diagnostics.js && node --check js/remote-session.js && node --check js/browser-view.js && node --check js/browser-model.js && node --check js/browser-components.js && node --check js/browser-controller.js && node --check js/app.js && node -e \"JSON.parse(require('fs').readFileSync('appinfo.json','utf8'))\"",
+    "check": "node --check js/remote-contract.js && node --check js/storage.js && node --check js/diagnostics.js && node --check js/remote-session.js && node --check js/browser-view.js && node --check js/browser-model.js && node --check js/browser-components.js && node --check js/media-capabilities.js && node --check js/browser-controller.js && node --check js/app.js && node -e \"JSON.parse(require('fs').readFileSync('appinfo.json','utf8'))\"",
     "package": "ares-package --no-minify -o ipk .",
     "package:release": "ares-package -o ipk .",
     "install": "ares-install -d lumatv ipk/com.luma.companion2_0.1.0_all.ipk",

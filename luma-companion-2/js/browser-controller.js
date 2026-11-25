@@ -26,10 +26,15 @@
     suggestions: [],
     suggestionOpen: false,
     lastToken: 0,
+    lastSearchToken: 0,
+    searchResults: { status: 'idle', query: '', items: [], error: '' },
+    searchTimer: null,
+    searchAbort: null,
     lastScreen: '',
     loadTimer: null,
     focusRequest: null,
     videoIdleTimer: null,
+    videoStats: { waits: 0, recoveries: 0, errors: 0 },
     snapshot: null
   };
 
@@ -160,6 +165,141 @@
     }
   }
 
+  function cleanSearchText(value) {
+    return String(value === null || value === undefined ? '' : value)
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/^\s+|\s+$/g, '');
+  }
+
+  function searchHost(url) {
+    try {
+      var link = documentRef.createElement('a');
+      link.href = url;
+      return (link.hostname || '').replace(/^www\./, '');
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function searchItems(data) {
+    var raw = [];
+    if (!isObject(data)) return raw;
+    if (data.AbstractURL && data.AbstractText) {
+      raw.push({
+        url: data.AbstractURL,
+        title: data.Heading || cleanSearchText(data.AbstractText).substring(0, 90),
+        snippet: cleanSearchText(data.AbstractText)
+      });
+    }
+    var groups = [data.Results, data.RelatedTopics];
+    for (var g = 0; g < groups.length; g += 1) {
+      var group = groups[g];
+      if (!group || !group.length) continue;
+      for (var i = 0; i < group.length; i += 1) {
+        var item = group[i];
+        if (!isObject(item) || !item.FirstURL) continue;
+        raw.push({ url: item.FirstURL, title: cleanSearchText(item.Text), snippet: cleanSearchText(item.Text) });
+      }
+    }
+
+    var items = [];
+    var seen = {};
+    /* Prefer direct answers and external sites over DuckDuckGo topic pages. */
+    raw.sort(function (a, b) {
+      return (/duckduckgo\.com/i.test(a.url) ? 1 : 0) - (/duckduckgo\.com/i.test(b.url) ? 1 : 0);
+    });
+    for (var j = 0; j < raw.length && items.length < 12; j += 1) {
+      var checked = view.validateUrl(raw[j].url);
+      if (!checked.ok || seen[checked.url]) continue;
+      seen[checked.url] = true;
+      items.push({
+        url: checked.url,
+        title: raw[j].title.substring(0, 110) || searchHost(checked.url),
+        snippet: raw[j].snippet.substring(0, 220),
+        host: searchHost(checked.url),
+        blocked: model.isFrameBlocked(checked.url)
+      });
+    }
+    return items;
+  }
+
+  function cancelSearchFetch() {
+    if (state.searchTimer) {
+      global.clearTimeout(state.searchTimer);
+      state.searchTimer = null;
+    }
+    if (state.searchAbort && typeof state.searchAbort.abort === 'function') {
+      try { state.searchAbort.abort(); } catch (error) { /* already finished */ }
+    }
+    state.searchAbort = null;
+  }
+
+  function setSearchResults(status, items, error, query) {
+    state.searchResults = {
+      status: status,
+      query: query || '',
+      items: items || [],
+      error: error || ''
+    };
+    if (state.snapshot && state.snapshot.screen === 'search') render(state.snapshot);
+  }
+
+  function loadSearchResults(query) {
+    cancelSearchFetch();
+    var cleanQuery = String(query || '').replace(/^\s+|\s+$/g, '');
+    state.searchResults = { status: 'loading', query: cleanQuery, items: [], error: '' };
+    if (state.snapshot && state.snapshot.screen === 'search') render(state.snapshot);
+    if (!cleanQuery) {
+      setSearchResults('error', [], 'Enter a search phrase first.', cleanQuery);
+      return;
+    }
+    if (typeof global.fetch !== 'function') {
+      setSearchResults('error', [], 'This TV engine does not expose fetch for search results.', cleanQuery);
+      return;
+    }
+    var endpoint = String(model.searchEndpoint || '').replace('{query}', encodeURIComponent(cleanQuery));
+    var checked = view.validateUrl(endpoint);
+    if (!checked.ok) {
+      setSearchResults('error', [], 'Search results cannot be requested from this build.', cleanQuery);
+      return;
+    }
+
+    var done = false;
+    var abort = typeof global.AbortController === 'function' ? new global.AbortController() : null;
+    state.searchAbort = abort;
+    function finish(status, items, error) {
+      if (done) return;
+      done = true;
+      cancelSearchFetch();
+      setSearchResults(status, items, error, cleanQuery);
+    }
+    state.searchTimer = global.setTimeout(function () {
+      finish('error', [], 'Search results timed out. Check the network and try again.');
+    }, 15000);
+
+    global.fetch(checked.url, {
+      credentials: 'omit',
+      signal: abort ? abort.signal : undefined
+    }).then(function (response) {
+      if (!response.ok) throw new Error('http_' + response.status);
+      return response.json();
+    }).then(function (data) {
+      var items = searchItems(data);
+      finish(items.length ? 'ready' : 'error', items,
+        items.length ? '' : 'No instant-answer results were returned for that phrase.');
+    }).catch(function () {
+      finish('error', [], 'Search results could not be fetched. Check the network and try again.');
+    });
+  }
+
+  function maybeLoadSearch(snapshot) {
+    var search = snapshot.search || {};
+    if (!search.token || search.token === state.lastSearchToken) return;
+    state.lastSearchToken = search.token;
+    loadSearchResults(search.query);
+  }
+
   function armWatchdog(tabId) {
     clearWatchdog();
     state.loadTimer = global.setTimeout(function () {
@@ -178,6 +318,7 @@
     var tab = model.currentTab();
     var screen = snapshot.screen;
     var supported = !!(tab && model.isDirectVideo(tab.url));
+    var audioSupported = !!(tab && model.isDirectAudio(tab.url));
 
     if (screen === 'companion') {
       nodes.screen.style.display = 'none';
@@ -211,14 +352,18 @@
     hideOverlay();
 
     if (screen === 'home') nodes.screen.innerHTML = ui.home(snapshot);
+    else if (screen === 'search') nodes.screen.innerHTML = ui.searchResults(snapshot, state.searchResults);
     else if (screen === 'bookmarks') nodes.screen.innerHTML = ui.bookmarks(snapshot, state.queries.bookmarks);
     else if (screen === 'history') nodes.screen.innerHTML = ui.history(snapshot, state.queries.history);
     else if (screen === 'tabs') nodes.screen.innerHTML = ui.tabManager(snapshot);
     else if (screen === 'settings') nodes.screen.innerHTML = ui.settings(snapshot);
+    else if (screen === 'capabilities') nodes.screen.innerHTML = ui.capabilities();
     else if (screen === 'video') nodes.screen.innerHTML = ui.video(snapshot, supported);
+    else if (screen === 'audio') nodes.screen.innerHTML = ui.audio(snapshot, audioSupported);
     else nodes.screen.innerHTML = ui.emptyState('This screen is not available.');
 
     if (screen === 'video' && supported) attachVideo();
+    if (screen === 'audio' && audioSupported) attachAudio();
   }
 
   function render(snapshot) {
@@ -249,6 +394,7 @@
 
     view.syncTabs(snapshot.tabs);
     renderScreen(snapshot);
+    if (snapshot.screen === 'search') maybeLoadSearch(snapshot);
 
     var request = snapshot.loadRequest;
     if (request && request.token !== state.lastToken) {
@@ -262,9 +408,11 @@
 
     if (tab) view.setZoom(tab.id, snapshot.settings.zoom);
 
-    setText('browser-status-page', tab && tab.url
-      ? (tab.loading ? 'Loading · ' + model.sanitizeUrl(tab.url) : model.sanitizeUrl(tab.url))
-      : 'New Tab');
+    setText('browser-status-page', snapshot.screen === 'search'
+      ? 'Search · ' + String((snapshot.search && snapshot.search.query) || '').substring(0, 60)
+      : (tab && tab.url
+        ? (tab.loading ? 'Loading · ' + model.sanitizeUrl(tab.url) : model.sanitizeUrl(tab.url))
+        : 'New Tab'));
     setText('browser-status-tabs', snapshot.tabs.length + (snapshot.tabs.length === 1 ? ' tab' : ' tabs'));
 
     if (state.suggestionOpen) renderSuggestions();
@@ -400,21 +548,28 @@
     video.addEventListener('loadedmetadata', updateVideoTime);
     video.addEventListener('timeupdate', updateVideoTime);
     video.addEventListener('waiting', function () {
+      state.videoStats.waits += 1;
       var buffer = byId('video-buffering');
       if (buffer) buffer.className = 'video-buffering is-visible';
+      updateVideoDiag();
     });
     video.addEventListener('playing', function () {
+      state.videoStats.recoveries += 1;
       var buffer = byId('video-buffering');
       if (buffer) buffer.className = 'video-buffering';
       videoMessage('');
+      updateVideoDiag();
     });
     video.addEventListener('error', function () {
+      state.videoStats.errors += 1;
       videoMessage('This video file could not be decoded by the TV engine.');
+      updateVideoDiag();
     });
     video.addEventListener('ended', function () { videoMessage('Playback ended.'); });
     video.addEventListener('mousemove', armVideoIdle);
     video.addEventListener('touchstart', armVideoIdle);
     updateVideoTime();
+    updateVideoDiag();
     armVideoIdle();
   }
 
@@ -455,6 +610,118 @@
         return true;
       }
       request.call(video);
+      return true;
+    }
+    return false;
+  }
+
+  function updateVideoDiag() {
+    var stats = state.videoStats;
+    var video = byId('luma-video');
+    var tracks = byId('video-tracks');
+    if (video && tracks && video.audioTracks && typeof video.audioTracks.length === 'number') {
+      tracks.className = 'video-track-info';
+      tracks.textContent = 'Audio tracks exposed by engine: ' + video.audioTracks.length;
+    }
+    var label = byId('video-diag');
+    if (label) {
+      label.textContent = 'Local diagnostics · buffering pauses: ' + stats.waits +
+        ' · recoveries: ' + stats.recoveries + ' · decode errors: ' + stats.errors +
+        ' · audio tracks: ' + (video && video.audioTracks ? video.audioTracks.length : 'not exposed');
+    }
+  }
+
+  function loadSubtitles() {
+    var video = byId('luma-video');
+    var input = byId('video-subtitle-url');
+    var raw = input ? input.value : '';
+    if (!video || !raw) {
+      videoMessage('Enter a WebVTT address first.');
+      return false;
+    }
+    var checked = view.validateUrl(raw);
+    if (!checked.ok) {
+      videoMessage('Subtitles need an absolute http(s) WebVTT address.');
+      return false;
+    }
+    var old = video.querySelector('track');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+    var track = documentRef.createElement('track');
+    track.setAttribute('kind', 'subtitles');
+    track.setAttribute('srclang', 'en');
+    track.setAttribute('label', 'Luma WebVTT');
+    track.setAttribute('default', 'default');
+    track.setAttribute('src', checked.url);
+    track.addEventListener('error', function () {
+      videoMessage('The subtitle file could not be fetched by the TV engine.');
+    });
+    video.appendChild(track);
+    if (typeof video.load === 'function') video.load();
+    videoMessage('Subtitle track requested.');
+    return true;
+  }
+
+  function updateAudioTime() {
+    var audio = byId('luma-audio');
+    var label = byId('audio-time');
+    var seek = byId('audio-seek');
+    if (!audio) return;
+    var current = isFinite(audio.currentTime) ? audio.currentTime : 0;
+    var total = isFinite(audio.duration) ? audio.duration : 0;
+    function clock(value) {
+      var seconds = Math.floor(value % 60);
+      var minutes = Math.floor(value / 60) % 60;
+      return minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+    }
+    if (label) label.textContent = clock(current) + ' / ' + (total ? clock(total) : '—');
+    if (seek && total) seek.value = String(Math.floor(current / total * 100));
+  }
+
+  function attachAudio() {
+    var audio = byId('luma-audio');
+    if (!audio) return;
+    var snapshot = state.snapshot || model.getState();
+    audio.volume = Math.max(0, Math.min(1, snapshot.settings.videoVolume / 100));
+    audio.addEventListener('loadedmetadata', updateAudioTime);
+    audio.addEventListener('timeupdate', updateAudioTime);
+    audio.addEventListener('waiting', function () { setText('audio-diag', 'Local status: buffering'); });
+    audio.addEventListener('playing', function () { setText('audio-diag', 'Local status: playing'); });
+    audio.addEventListener('ended', function () { setText('audio-diag', 'Local status: ended'); });
+    audio.addEventListener('error', function () {
+      setText('audio-error', 'This audio file could not be decoded by the TV engine.');
+      setText('audio-diag', 'Local status: decode error');
+    });
+    updateAudioTime();
+  }
+
+  function audioAction(action, value) {
+    var audio = byId('luma-audio');
+    if (!audio) return false;
+    if (action === 'audio-play') {
+      if (typeof audio.play !== 'function') return false;
+      var promise = audio.play();
+      if (promise && typeof promise.catch === 'function') {
+        promise.catch(function () { setText('audio-error', 'Playback was blocked by the TV engine.'); });
+      }
+      return true;
+    }
+    if (action === 'audio-pause') {
+      if (typeof audio.pause === 'function') audio.pause();
+      return true;
+    }
+    if (action === 'audio-back10' || action === 'audio-forward10') {
+      if (!isFinite(audio.duration)) return false;
+      var step = action === 'audio-back10' ? -10 : 10;
+      audio.currentTime = Math.max(0, Math.min(audio.duration, (audio.currentTime || 0) + step));
+      return true;
+    }
+    if (action === 'audio-seek') {
+      if (!isFinite(audio.duration) || !isFinite(Number(value))) return false;
+      audio.currentTime = Math.max(0, Math.min(audio.duration, audio.duration * Number(value) / 100));
+      return true;
+    }
+    if (action === 'audio-volume') {
+      audio.volume = Math.max(0, Math.min(1, Number(value) / 100));
       return true;
     }
     return false;
@@ -587,7 +854,8 @@
     }
     var action = target.getAttribute('data-action');
     var id = target.getAttribute('data-id') || '';
-    var value = target.getAttribute('data-value') || '';
+    var value = target.getAttribute('data-value') ||
+      (target.value === undefined || target.value === null ? '' : String(target.value));
     var tab = model.currentTab();
 
     if (action === 'tab-activate') { model.activateTab(id); return; }
@@ -627,6 +895,11 @@
     if (action === 'suggestion') { closeSuggestions(); model.navigateActive(value); return; }
     if (action === 'home-search-go') { navigateFrom('home-search-input'); return; }
     if (action === 'navigate') { model.navigateActive(value); return; }
+    if (action === 'search-open') { model.navigateActive(value); return; }
+    if (action === 'search-retry') {
+      loadSearchResults((state.snapshot && state.snapshot.search && state.snapshot.search.query) || '');
+      return;
+    }
     if (action === 'shortcut-add') { model.addShortcut(); return; }
     if (action === 'shortcut-remove') { model.removeShortcut(id); return; }
     if (action === 'shortcuts-reset') { model.resetShortcuts(); return; }
@@ -644,6 +917,10 @@
       if (checked.ok) model.setSetting('homepage', checked.url);
       return;
     }
+    if (action === 'video-close') { model.setScreen('page'); return; }
+    if (action === 'audio-close') { model.setScreen('page'); return; }
+    if (action === 'video-subtitle-load') { loadSubtitles(); return; }
+    if (action.indexOf('audio-') === 0 && audioAction(action, value)) return;
     if (action.indexOf('video-') === 0 && videoAction(action, value)) return;
     if (action.indexOf('screen-') === 0) {
       model.setScreen(action.substring(7));
@@ -702,6 +979,11 @@
     } else if (action === 'video-seek') {
       videoAction('video-seek', value);
       armVideoIdle();
+    } else if (action === 'audio-volume') {
+      model.setSetting('videoVolume', parseInt(value, 10));
+      audioAction('audio-volume', value);
+    } else if (action === 'audio-seek') {
+      audioAction('audio-seek', value);
     }
   }
 
@@ -788,24 +1070,36 @@
       var uiAction = action.replace('.', '-');
       return videoAction(uiAction, options.position || 0);
     }
+    if (action === 'audio.play' || action === 'audio.pause' || action === 'audio.seek') {
+      if (!tab || !model.isDirectAudio(tab.url)) return false;
+      if (model.getState().screen !== 'audio') model.setScreen('audio');
+      return audioAction(action.replace('.', '-'), options.position || 0);
+    }
     return false;
   }
 
   function suspend() {
     closeSuggestions();
     clearWatchdog();
+    cancelSearchFetch();
     if (state.videoIdleTimer) {
       global.clearTimeout(state.videoIdleTimer);
       state.videoIdleTimer = null;
     }
     var video = byId('luma-video');
     if (video && typeof video.pause === 'function') video.pause();
+    var audio = byId('luma-audio');
+    if (audio && typeof audio.pause === 'function') audio.pause();
     if (nodes.frames) nodes.frames.style.display = 'none';
   }
 
   function resume() {
-    applyAccent(model.getState().settings);
-    render(model.getState());
+    var snapshot = model.getState();
+    applyAccent(snapshot.settings);
+    render(snapshot);
+    if (snapshot.screen === 'search' && state.searchResults.status !== 'ready') {
+      loadSearchResults(snapshot.search && snapshot.search.query);
+    }
   }
 
   global.LumaBrowserController = {

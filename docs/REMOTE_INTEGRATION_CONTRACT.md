@@ -1,7 +1,7 @@
 # Remote Integration Contract v1
 
 **Date:** 2026-11-25  
-**Status:** approved for Phase 2 remote connection, extended for Phase 3 browser view and updated for the current full browser UI. Envelope validation remains the single boundary. The TV client and the opt-in Host mode inside `tvremote2` 3.0.0 implement the handshake. The Android Host mode exposes `diagnostics.refresh`, `browser.open` and `browser.close`; the TV also prepares additional browser/video command states for a future Host-mode UI. `app.focus` and telemetry remain disabled.
+**Status:** approved for Phase 2 remote connection, extended for Phase 3 browser view and updated for the current full browser UI. Envelope validation remains the single boundary. The TV client and the opt-in Host mode inside `tvremote2` 3.0.0 implement the handshake. The Android Host mode exposes `diagnostics.refresh`, `browser.open` and `browser.close`; the TV also prepares additional browser/video/audio command states for a future Host-mode UI. `app.focus` and telemetry remain disabled.
 
 ## Scope
 
@@ -239,9 +239,9 @@ TV app reads capability
   -> stores accepted version and feature list in memory
 Channel used only for allow-listed messages
   -> Android Host mode sends diagnostics.refresh, browser.open, browser.close with ACK
-  -> TV also accepts prepared browser/video command states, not yet exposed by the phone UI
+  -> TV also accepts prepared browser/video/audio command states, not yet exposed by the phone UI
 TV app hidden or user taps Disconnect
-  -> clears timers/queue -> closes channel, hides frames and pauses video
+  -> clears timers/queue -> closes channel, hides frames and pauses video/audio
 ```
 
 No token or client key is exchanged in this release. The TV stores no pairing
@@ -304,11 +304,11 @@ Expected: `ok: true`, reason `ok`.
 | Handshake | Implemented: hello -> pending -> capability. |
 | `diagnostics.refresh` command with ACK | Implemented and blocked until capability is accepted. |
 | `browser.open` / `browser.close` with ACK | Implemented in Phase 3. URL validation on both sides; frames clear and the TV returns Home on close/hide. |
-| Extra TV browser/video commands | Prepared on the TV controller and remote allow-list. Not exposed by the Android Host mode UI and not claimed as a tested phone flow. |
+| Extra TV browser/video/audio commands | Prepared on the TV controller and remote allow-list. Not exposed by the Android Host mode UI and not claimed as a tested phone flow. |
 | Command rate limit | 20 commands per 10 seconds on the TV; excess commands get a rejected ACK. |
 | `app.focus` | Rejected as reserved; no focus change is performed. |
 | Payload-schema validation | Implemented for hello, capability, command, event and ack. |
 | ACK/retry/dedupe | ACK for commands implemented. Handshake accepts `batch_id` and `partial` for future telemetry. Bounded reconnect implemented. Telemetry dedupe deferred. |
 | Token/pairing key storage | Not implemented by design; no credential is stored on the TV. |
 | Physical TV-to-phone handshake | Pending manual test; TV app package and process were verified, but no live handshake capture exists. |
-| Physical browser frame rendering | Pending manual test; arbitrary-site framing and DRM are not promised. |
+| Physical browser frame rendering | Confirmed through DevTools on LG `55UR7500PSC` for Bing, Wikipedia and example.com; local search-result clicks and blocked notices were captured. Arbitrary-site framing and DRM are not promised. |

@@ -14,6 +14,15 @@
   var MAX_BOOKMARKS = 200;
   var MAX_SHORTCUTS = 12;
 
+  /*
+   * Search terms are rendered as an in-app results screen instead of a framed
+   * search-engine page. On this webOS build, a result link can replace the whole
+   * app with loaderror.html=-27 even when the iframe has no top-navigation
+   * permission. Local results keep every destination under the same URL guard.
+   */
+  var SEARCH_RESULT_ENDPOINT =
+    'https://api.duckduckgo.com/?q={query}&format=json&no_html=1&skip_disambig=1&t=luma';
+
   var ENGINES = {
     google: { name: 'Google', prefix: 'https://www.google.com/search?q=' },
     bing: { name: 'Bing', prefix: 'https://www.bing.com/search?q=' },
@@ -77,6 +86,7 @@
     restoredTabs: false,
     shortcuts: copy(DEFAULT_SHORTCUTS),
     loadRequest: null,
+    search: { query: '', url: '', token: 0 },
     notice: ''
   };
 
@@ -126,6 +136,7 @@
       shortcuts: state.shortcuts,
       restoredTabs: state.restoredTabs,
       loadRequest: state.loadRequest,
+      search: state.search,
       notice: state.notice
     };
   }
@@ -153,6 +164,7 @@
         tabs.push({
           id: tab.id,
           entries: tab.entries,
+          entryMeta: tab.entryMeta,
           index: tab.index,
           title: tab.title,
           url: tab.url
@@ -230,7 +242,23 @@
 
     if (state.settings.startup === 'restore' && isArray(saved.tabs) && saved.tabs.length) {
       state.tabs = saved.tabs.slice(0, MAX_TABS);
+      for (var t = 0; t < state.tabs.length; t += 1) {
+        var restoredTab = state.tabs[t];
+        if (!isArray(restoredTab.entries)) restoredTab.entries = [null];
+        if (!isArray(restoredTab.entryMeta) || restoredTab.entryMeta.length !== restoredTab.entries.length) {
+          restoredTab.entryMeta = [];
+          for (var e = 0; e < restoredTab.entries.length; e += 1) restoredTab.entryMeta.push(null);
+        }
+        restoredTab.loading = false;
+        restoredTab.error = null;
+        restoredTab.loadedTitle = restoredTab.loadedTitle || restoredTab.title || 'Page';
+      }
       state.activeTabId = saved.activeTabId || state.tabs[0].id;
+      var activeSaved = findTab(state.activeTabId) || state.tabs[0];
+      var activeMeta = activeSaved && activeSaved.entryMeta && activeSaved.entryMeta[activeSaved.index];
+      if (activeMeta && activeMeta.search && activeMeta.query) {
+        state.search = { query: activeMeta.query, url: activeSaved.url || '', token: 0 };
+      }
       state.restoredTabs = true;
       return true;
     }
@@ -241,6 +269,7 @@
     var tab = {
       id: uid('tab'),
       entries: [null],
+      entryMeta: [null],
       index: 0,
       title: 'New Tab',
       url: null,
@@ -252,6 +281,9 @@
       var checked = resolveAddress(url);
       if (checked.ok) {
         tab.entries.push(checked.url);
+        tab.entryMeta.push(checked.search
+          ? { url: checked.url, search: true, query: checked.query || '' }
+          : null);
         tab.index = 1;
         tab.url = checked.url;
         tab.title = titleFromUrl(checked.url);
@@ -332,7 +364,12 @@
       var searchChecked = validator(searchUrl);
       if (searchChecked.ok) {
         if (isFrameBlocked(searchChecked.url)) return { ok: false, reason: FRAME_BLOCKED_MESSAGE, blocked: true };
-        return { ok: true, url: searchChecked.url, search: true };
+        return {
+          ok: true,
+          url: searchChecked.url,
+          search: true,
+          query: String(raw).replace(/^\s+|\s+$/g, '')
+        };
       }
     }
     return { ok: false, reason: 'Enter an absolute http(s) address or a search term.' };
@@ -348,15 +385,44 @@
     };
   }
 
+  /* Shared by restore, tab activation and close so search entries never frame a search page. */
+  function applyCurrentEntry(tab) {
+    if (!tab) {
+      state.screen = 'home';
+      state.loadRequest = null;
+      return;
+    }
+    tab.loading = false;
+    tab.error = null;
+    state.notice = '';
+    var meta = tab.entryMeta && tab.entryMeta[tab.index];
+    if (meta && meta.search && meta.query) {
+      state.search = { query: meta.query, url: tab.url || '', token: state.search.token + 1 };
+      state.screen = 'search';
+      state.loadRequest = null;
+      return;
+    }
+    state.screen = tab.url ? 'page' : 'home';
+    if (tab.url) {
+      tab.loading = true;
+      requestLoad(tab);
+    } else {
+      state.loadRequest = null;
+    }
+  }
+
   function setScreen(screen) {
     var known = {
       home: true,
       page: true,
+      search: true,
       bookmarks: true,
       history: true,
       tabs: true,
       settings: true,
       video: true,
+      audio: true,
+      capabilities: true,
       diagnostics: true,
       companion: true
     };
@@ -379,9 +445,7 @@
     if (!findTab(state.activeTabId)) state.activeTabId = state.tabs[0].id;
 
     if (state.restoredTabs) {
-      var active = currentTab();
-      state.screen = active && active.url ? 'page' : 'home';
-      if (active && active.url) requestLoad(active);
+      applyCurrentEntry(currentTab());
     } else if (state.settings.startup === 'homepage') {
       navigateActive(state.settings.homepage);
     } else {
@@ -400,8 +464,7 @@
     var tab = newTab(url);
     state.tabs.push(tab);
     state.activeTabId = tab.id;
-    state.screen = tab.url ? 'page' : 'home';
-    if (tab.url) requestLoad(tab);
+    applyCurrentEntry(tab);
     persist();
     emit();
     return tab;
@@ -422,9 +485,7 @@
       state.tabs.splice(index, 1);
       if (state.activeTabId === id) {
         state.activeTabId = state.tabs[Math.min(index, state.tabs.length - 1)].id;
-        var active = currentTab();
-        state.screen = active && active.url ? 'page' : 'home';
-        if (active && active.url) requestLoad(active);
+        applyCurrentEntry(currentTab());
       }
     }
     persist();
@@ -435,9 +496,8 @@
     var tab = findTab(id);
     if (!tab) return;
     state.activeTabId = id;
-    state.screen = tab.url ? 'page' : 'home';
     state.sidebarOpen = false;
-    if (tab.url) requestLoad(tab);
+    applyCurrentEntry(tab);
     emit();
   }
 
@@ -465,17 +525,28 @@
 
     if (tab.index < tab.entries.length - 1) {
       tab.entries = tab.entries.slice(0, tab.index + 1);
+      tab.entryMeta = tab.entryMeta.slice(0, tab.index + 1);
     }
     tab.entries.push(resolved.url);
+    tab.entryMeta.push(resolved.search
+      ? { url: resolved.url, search: true, query: resolved.query || '' }
+      : null);
     tab.index = tab.entries.length - 1;
     tab.url = resolved.url;
-    tab.title = resolved.search ? ('Search · ' + String(raw).substring(0, 28)) : titleFromUrl(resolved.url);
-    tab.loading = true;
+    tab.title = resolved.search ? ('Search · ' + resolved.query.substring(0, 28)) : titleFromUrl(resolved.url);
+    tab.loading = false;
     tab.error = null;
-    state.screen = 'page';
     state.notice = '';
     addHistory(resolved.url, tab.title);
-    requestLoad(tab);
+
+    if (resolved.search) {
+      state.search = { query: resolved.query, url: resolved.url, token: state.search.token + 1 };
+      state.screen = 'search';
+      state.loadRequest = null;
+    } else {
+      state.screen = 'page';
+      requestLoad(tab);
+    }
     emit();
     return true;
   }
@@ -500,10 +571,21 @@
     if (target < 0 || target >= tab.entries.length) return false;
     tab.index = target;
     tab.url = tab.entries[target];
-    tab.loading = !!tab.url;
+    tab.loading = false;
     tab.error = null;
-    state.screen = tab.url ? 'page' : 'home';
-    if (tab.url) requestLoad(tab);
+    state.notice = '';
+    var meta = tab.entryMeta && tab.entryMeta[target];
+    if (meta && meta.search && meta.query) {
+      state.search = { query: meta.query, url: tab.url || '', token: state.search.token + 1 };
+      state.screen = 'search';
+      state.loadRequest = null;
+    } else {
+      state.screen = tab.url ? 'page' : 'home';
+      if (tab.url) {
+        tab.loading = true;
+        requestLoad(tab);
+      }
+    }
     emit();
     return true;
   }
@@ -511,10 +593,18 @@
   function reload() {
     var tab = currentTab();
     if (!tab || !tab.url) return false;
-    tab.loading = true;
+    tab.loading = false;
     tab.error = null;
-    requestLoad(tab);
-    state.loadRequest.reload = true;
+    var meta = tab.entryMeta && tab.entryMeta[tab.index];
+    if (meta && meta.search && meta.query) {
+      state.search = { query: meta.query, url: tab.url, token: state.search.token + 1 };
+      state.screen = 'search';
+      state.loadRequest = null;
+    } else {
+      tab.loading = true;
+      requestLoad(tab);
+      state.loadRequest.reload = true;
+    }
     emit();
     return true;
   }
@@ -624,6 +714,7 @@
     state.history = [];
     if (tab) {
       tab.entries = [tab.url || null];
+      tab.entryMeta = [null];
       tab.index = 0;
     }
     persist();
@@ -636,6 +727,12 @@
     if (!url || !/^https?:\/\//i.test(url)) return false;
     var clean = String(url).split(/[?#]/)[0].toLowerCase();
     return /\.(mp4|webm|ogv|ogg|m4v|mov)(?:$|\/)/.test(clean);
+  }
+
+  function isDirectAudio(url) {
+    if (!url || !/^https?:\/\//i.test(url)) return false;
+    var clean = String(url).split(/[?#]/)[0].toLowerCase();
+    return /\.(mp3|m4a|aac|flac|wav|ogg|opus)(?:$|\/)/.test(clean);
   }
 
   function resetShortcuts() {
@@ -684,6 +781,7 @@
   function setSetting(key, value) {
     if (!Object.prototype.hasOwnProperty.call(DEFAULT_SETTINGS, key)) return false;
     if (typeof value !== typeof DEFAULT_SETTINGS[key]) return false;
+    if (key === 'searchEngine' && (!ENGINES[value] || isFrameBlocked(ENGINES[value].prefix))) return false;
     if (key === 'zoom') value = Math.max(50, Math.min(200, Math.floor(value)));
     if (key === 'videoVolume') value = Math.max(0, Math.min(100, Math.floor(value)));
     state.settings[key] = value;
@@ -707,8 +805,10 @@
     titleFromUrl: titleFromUrl,
     isBookmarked: isBookmarked,
     isDirectVideo: isDirectVideo,
+    isDirectAudio: isDirectAudio,
     resolveAddress: resolveAddress,
     isFrameBlocked: isFrameBlocked,
+    searchEndpoint: SEARCH_RESULT_ENDPOINT,
     engines: ENGINES,
     setScreen: setScreen,
     toggleSidebar: toggleSidebar,

@@ -40,12 +40,14 @@ invalid-JSON counting, suspend close and manual disconnect.
 ## What changed after that record
 
 1. The browser card was replaced by a full shell: tab bar, address bar, side menu, Home,
-   Bookmarks, History, Tab Manager, Settings, Video and Companion screens.
-2. `browser-view.js` became a multi-tab sandboxed iframe renderer.
+   Bookmarks, History, Tab Manager, Settings, Video, Audio, Media Capabilities and Companion screens.
+2. `browser-view.js` became a multi-tab sandboxed iframe renderer. `allow-popups` remains for
+   ordinary helper windows; search-result links are now local Luma actions because framed search
+   results could replace the whole TV app with `errorCode=-27`.
 3. `browser-model.js`, `browser-components.js` and `browser-controller.js` were added.
 4. `app.js` was rewritten to own lifecycle/diagnostics/LAN only and to delegate browser actions
    to `LumaBrowserController.command()`.
-5. The TV side additionally prepares browser/video command states for a future Host-mode UI;
+5. The TV side additionally prepares browser/video/audio command states for a future Host-mode UI;
    the Android Host mode still exposes only `diagnostics.refresh`, `browser.open` and
    `browser.close`.
 6. Telemetry source created during an interim step was fully removed.
@@ -53,24 +55,25 @@ invalid-JSON counting, suspend close and manual disconnect.
 Because of these changes, the old 22/22 browser check and 20/20 remote check are not the current
 acceptance evidence. Current results are:
 
-- `browser-view-check.js`: 38/38
-- `browser-model-check.js`: 48/48
-- `browser-components-check.js`: 61/61
-- `browser-controller-check.js`: 38/38
-- `remote-session-check.js`: 26/26
+- `browser-view-check.js`: 40/40
+- `browser-model-check.js`: 87/87
+- `browser-components-check.js`: 82/82
+- `browser-controller-check.js`: 60/60
+- `remote-session-check.js`: 29/29
 - `contract-check.js`: 11/11
 - `storage-check.js`: 8/8
 - `npm run package`: success
 
 ## Device state at this time
 
-The original Phase 3 IPK was not installed in that run. A later full-browser IPK was regenerated
-at `luma-companion-2/ipk/com.luma.companion2_0.1.0_all.ipk`, then installed and launched on
-`lumatv`. A live DevTools inspection confirmed the browser shell and Home screen rendering.
-Page navigation, Magic Remote input and the real phone handshake remain manual acceptance items.
-A later live run reproduced the TV `errorCode=-27` crash on Google/GitHub/YouTube/DuckDuckGo and
-fixed it with a pre-frame host denylist, a visible notice toast and Bing defaults; current evidence
-is in `docs/BROWSER_UI_TEST_RESULTS.md`.
+The original Phase 3 IPK was not installed in that run. Later full-browser, framing-fix and finally
+media/audio/local-search IPKs were regenerated at
+`luma-companion-2/ipk/com.luma.companion2_0.1.0_all.ipk` and installed/launched on `lumatv`. Live
+DevTools inspection confirmed the browser shell, safe page frames, honest capability reporting,
+real search-result clicks, and blocked-host notices. Magic Remote input and the real phone
+handshake remain manual acceptance items. A live run reproduced the TV `errorCode=-27` crash on
+Google/GitHub/YouTube/DuckDuckGo and fixed it with a pre-frame host denylist, a visible notice
+toast and local results; current evidence is in `docs/BROWSER_UI_TEST_RESULTS.md`.
 
 The earlier unreachable state cleared after the user supplied the Developer Mode passphrase
 again; the already configured `lumatv` CLI entry was used. The passphrase was not written to
@@ -82,7 +85,7 @@ files, docs, logs or commits. Current device evidence is in `docs/BROWSER_UI_TES
 |---|---|
 | TV-to-phone WebSocket upgrade | Pending. |
 | Phone approval and capability on real devices | Pending; no Approve tap was performed. |
-| Browser frame rendering on LG `55UR7500PSC` | Not captured. |
+| Browser frame rendering on LG `55UR7500PSC` | Confirmed through CDP for Bing, Wikipedia and example.com; local search-result clicks and blocked notices were also captured. Arbitrary sites are not promised. |
 | Third-party sites that refuse framing | Not promised. |
 | DRM or HLS/DASH playback | Explicitly excluded. |
 | Magic Remote entry of URL / IP / port | Not captured. |

@@ -87,6 +87,9 @@ static HTML source. DOM metadata checks treat them as known generated IDs.
 | `setting-homepage`, `setting-engine`, `setting-startup`, `setting-zoom`, `setting-accent`, `setting-sidebar`, `setting-autoplay`, `setting-volume` | Settings controls |
 | `luma-video` | dedicated direct-video player |
 | `video-time`, `video-seek`, `video-error`, `video-buffering` | video status/controls |
+| `video-diag`, `video-tracks`, `video-subtitle-url` | local video diagnostics, audio-track report, optional WebVTT URL |
+| `luma-audio` | dedicated direct-audio player |
+| `audio-time`, `audio-seek`, `audio-error`, `audio-diag` | audio status/controls |
 
 All interactive generated elements carry `data-focusable="true"` and `tabindex="-1`; the
 controller owns their keyboard activation through delegated `data-action` attributes.
@@ -142,11 +145,14 @@ not re-render the top bar or navigation bar.
 |---|---|---|
 | `home` | `ui.home()` | Search, Quick Access, Frequently visited, Recently opened, Bookmarks, Recent tabs, detected engine/viewport. |
 | `page` | `#browser-frames` | Live sandboxed website frame; overlay for loading/error; no page-content reads. |
+| `search` | `ui.searchResults()` | Local results from DuckDuckGo Instant Answers; each row is a validated Luma action with an honest blocked/openable badge, plus loading, empty, error and retry states. No search page is framed. |
 | `bookmarks` | `ui.bookmarks()` | Search, open, edit and remove local bookmarks. |
 | `history` | `ui.history()` | Grouped local history, filtering, remove and clear. Query values are stripped from display. |
 | `tabs` | `ui.tabManager()` | Cards with title, saved address and honest loading state; no live previews. |
-| `settings` | `ui.settings()` | Only implemented controls, plus honest notes for cookies, permissions, subtitles and DRM. |
-| `video` | `ui.video()` | Direct video file player, or an explicit unsupported state. |
+| `settings` | `ui.settings()` | Only implemented controls, plus honest notes for cookies, permissions and DRM; links to Media Capabilities. |
+| `video` | `ui.video()` | Direct video file player with optional WebVTT, audio-track reporting and local diagnostics, or an explicit unsupported state. |
+| `audio` | `ui.audio()` | Direct audio file player with local status, or an explicit unsupported state. |
+| `capabilities` | `ui.capabilities()` | Runtime codec, display, MSE and Web Audio detection; output paths marked `not exposed`, never faked. |
 | `companion` | existing HTML | LAN form, platform info and diagnostics from Phase 1/2. |
 
 Default startup is Home / New Tab. If Settings chooses Homepage, `model.init()` navigates to the
@@ -157,7 +163,11 @@ tab returns to the page screen.
 
 - At most 8 tabs; each tab has its own iframe.
 - `view.load(tabId, url, zoom)` creates or reuses a frame, sets `sandbox="allow-scripts
-  allow-forms"`, applies `style.zoom`, sets `src` and shows only that frame.
+  allow-forms allow-popups"` plus `allow="fullscreen; autoplay"` and `allowfullscreen`, applies
+  `style.zoom`, sets `src` and shows only that frame. `allow-popups` remains for ordinary helper
+  windows and popups inherit the sandbox; search results do not rely on it. On this TV build a
+  framed search-engine result click could replace the whole app with `errorCode=-27`, so search
+  terms render the local `search` screen instead.
 - `view.showFrame(tabId)` displays one frame and hides the rest.
 - `view.setZoom()` updates a frame without reloading it.
 - `view.reload()` reassigns the same `src`.
@@ -172,20 +182,23 @@ tab returns to the page screen.
 
 `browser-model.js` persists under `localStorage` key `luma.browser.v1`:
 
-- settings: homepage, search engine, startup, accent, zoom, sidebar-at-startup, direct-video
-  autoplay and volume,
+- settings: homepage, search results source, startup, accent, zoom, sidebar-at-startup,
+  direct-video autoplay and volume,
 - bookmarks and Home shortcuts,
 - local history entries,
 - saved tabs for Restore startup.
 
-Per-tab back/forward stacks and the current `loadRequest` are in-memory. History stores URLs
-that the user opened locally; it is never sent as telemetry. The status bar and overlays use
+Per-tab back/forward stacks, a `search` flag/query on each entry, and the current `loadRequest`
+are in-memory. A search entry records the safe Bing search URL but renders the local results
+screen on load, back, forward and reload; it never creates a search-engine frame. History stores
+URLs that the user opened locally; it is never sent as telemetry. The status bar and overlays use
 `model.sanitizeUrl()` so query parameters are not shown as primary text.
 
 ## 10. Boundary notes
 
-- Iframe sandbox deliberately excludes `allow-same-origin`, `allow-top-navigation`,
-  `allow-popups` and `allow-downloads`.
+- Iframe sandbox deliberately excludes `allow-same-origin`, `allow-top-navigation` and
+  `allow-downloads`; `allow-popups` is present but popups stay sandboxed and are not used for the
+  search-result path.
 - Third-party sites may block framing through X-Frame-Options or CSP. On webOS this can replace the
   whole app with `loaderror.html?errorCode=-27`; the model rejects known blocking hosts before
   frame creation and shows `#browser-notice`. Unknown blockers are not promised. The app reports the frame

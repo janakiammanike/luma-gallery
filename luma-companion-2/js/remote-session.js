@@ -36,7 +36,10 @@
     'browser.previous_tab',
     'video.play',
     'video.pause',
-    'video.seek'
+    'video.seek',
+    'audio.play',
+    'audio.pause',
+    'audio.seek'
   ];
   var ALLOWED_ACTIONS = {};
   for (var capabilityIndex = 0; capabilityIndex < CAPABILITIES.length; capabilityIndex += 1) {

@@ -95,6 +95,8 @@
       ['history', 'History', '◷'],
       ['tabs', 'Recent Tabs', '▤'],
       ['video', 'Luma Player', '▶'],
+      ['audio', 'Audio Player', '♫'],
+      ['capabilities', 'Media Capabilities', '◈'],
       ['settings', 'Settings', '⚙'],
       ['companion', 'Companion', '⌁']
     ];
@@ -154,6 +156,49 @@
 
   function emptyState(message) {
     return '<div class="empty-state">' + esc(message) + '</div>';
+  }
+
+  /*
+   * Search results are rendered locally from the DuckDuckGo Instant Answer
+   * response. Each row is a normal Luma action, so a destination is refused by
+   * the same URL guard before any iframe is created.
+   */
+  function searchResults(snapshot, resultState) {
+    var query = (snapshot.search && snapshot.search.query) || '';
+    var html = '<div class="screen-head"><h2>Search results</h2>' +
+      button('screen-home', 'Back to Home', 'ui-button subtle') + '</div>';
+    html += '<div class="search-summary"><strong>' + esc(query || 'Search') + '</strong>' +
+      '<span>Local results from DuckDuckGo Instant Answers. No search-engine page is framed.</span></div>';
+
+    var data = resultState || { status: 'loading', items: [], error: '' };
+    if (data.status === 'loading') {
+      return html + '<div class="search-state"><span class="search-spinner"></span>' +
+        '<p>Fetching answers for “' + esc(query) + '”…</p></div>';
+    }
+    if (data.status === 'error') {
+      return html + emptyState(data.error || 'Search results could not be fetched.') +
+        button('search-retry', 'Try again', 'ui-button primary');
+    }
+    if (!data.items || !data.items.length) {
+      return html + emptyState('No instant-answer results were returned. Try a different phrase or enter an address directly.') +
+        button('search-retry', 'Try again', 'ui-button primary');
+    }
+
+    html += '<div class="search-results">';
+    for (var i = 0; i < data.items.length; i += 1) {
+      var item = data.items[i];
+      var badge = item.blocked
+        ? '<span class="search-badge is-blocked">Blocked in-app</span>'
+        : '<span class="search-badge">Opens in tab</span>';
+      html += '<button type="button" class="search-result"' + focusAttrs(
+        ' data-action="search-open" data-value="' + esc(item.url) + '"') + '>';
+      html += '<span class="search-result-main"><strong>' + esc(item.title || item.url) + '</strong>' +
+        '<small>' + esc(item.snippet || '') + '</small></span>';
+      html += '<span class="search-result-side"><small>' + esc(item.host || '') + '</small>' + badge + '</span>';
+      html += '</button>';
+    }
+    html += '</div><p class="screen-note">A “Blocked in-app” row is not opened. Select it to see the honest reason instead of risking the LG error page.</p>';
+    return html;
   }
 
   function home(model) {
@@ -321,8 +366,8 @@
       '<label class="setting-row setting-wide"><span>Homepage</span>' +
       '<input id="setting-homepage" type="text" value="' + esc(s.homepage) + '"' + focusAttrs() + ' /></label>' +
       button('setting-homepage-save', 'Save homepage', 'ui-button small') +
-      optionSelect('Default search engine', 'setting-engine', 'setting-engine', [
-        ['google', 'Google'], ['bing', 'Bing'], ['duckduckgo', 'DuckDuckGo']
+      optionSelect('Search results source', 'setting-engine', 'setting-engine', [
+        ['bing', 'DuckDuckGo answers (TV-safe)']
       ], s.searchEngine) +
       optionSelect('Startup behavior', 'setting-startup', 'setting-startup', [
         ['newtab', 'New tab'], ['homepage', 'Homepage'], ['restore', 'Restore last tabs']
@@ -330,6 +375,7 @@
       optionSelect('Website zoom', 'setting-zoom', 'setting-zoom', [
         [50, '50%'], [75, '75%'], [100, '100%'], [125, '125%'], [150, '150%'], [200, '200%']
       ], s.zoom) +
+      '<p class="setting-note">Google, YouTube and DuckDuckGo pages refuse framing on this TV, so search results are shown locally and each destination is checked before opening.</p>' +
       '</section>';
 
     html += '<section class="settings-card"><h3>Appearance</h3>' +
@@ -354,7 +400,8 @@
       '<input type="checkbox" id="setting-autoplay"' + (s.autoplayVideo ? ' checked="checked"' : '') + focusAttrs(' data-action="setting-autoplay"') + ' /></label>' +
       '<label class="setting-row"><span>Default volume</span>' +
       '<input type="range" min="0" max="100" id="setting-volume" value="' + esc(s.videoVolume) + '"' + focusAttrs(' data-action="setting-volume"') + ' /></label>' +
-      '<p class="setting-note">Subtitles and codec/DRM choices are not offered without verified platform support.</p>' +
+      button('screen-capabilities', 'Open Media Capabilities', 'ui-button small') +
+      '<p class="setting-note">Codec, display and audio-format values are detected from the TV engine. DRM, HLS/DASH and surround output are never claimed without real evidence.</p>' +
       '</section>';
 
     html += '<section class="settings-card"><h3>About</h3>' +
@@ -370,6 +417,72 @@
     return html + '</div>';
   }
 
+  function capabilityRows(title, rows) {
+    var html = '<section class="settings-card"><h3>' + esc(title) + '</h3>';
+    if (!rows || !rows.length) return html + '<p class="setting-note">No data was reported.</p></section>';
+    for (var i = 0; i < rows.length; i += 1) {
+      var result = rows[i].result || 'not reported';
+      var cls = result === 'supported' ? 'is-yes' : (result === 'maybe' ? 'is-maybe' : 'is-no');
+      html += '<div class="cap-row"><span>' + esc(rows[i].name) + '</span>' +
+        '<small>' + esc(rows[i].detail || '') + '</small>' +
+        '<strong class="' + cls + '">' + esc(result) + '</strong></div>';
+    }
+    return html + '</section>';
+  }
+
+  function capabilities() {
+    var caps = global.LumaMediaCapabilities && typeof global.LumaMediaCapabilities.detect === 'function'
+      ? global.LumaMediaCapabilities.detect() : null;
+    var html = '<div class="screen-head"><h2>Media Capabilities</h2>' +
+      button('screen-settings', 'Back to Settings', 'ui-button subtle') + '</div>';
+    if (!caps) return html + emptyState('Capability detection is unavailable in this build.');
+    html += '<div class="settings-grid">';
+    html += '<section class="settings-card"><h3>Display</h3><div class="about-list">' +
+      '<div><span>CSS viewport</span><strong>' + esc(caps.display.css) + '</strong></div>' +
+      '<div><span>Device pixel ratio</span><strong>' + esc(caps.display.dpr) + '</strong></div>' +
+      '<div><span>Physical pixels (inferred)</span><strong>' + esc(caps.display.physical) + '</strong></div>' +
+      '<div><span>4K display</span><strong>' + (caps.display.is4k ? 'detected' : 'not detected') + '</strong></div>' +
+      '<div><span>Engine</span><strong>' + esc(caps.engine) + '</strong></div>' +
+      '</div></section>';
+    html += capabilityRows('Video codecs', caps.video);
+    html += capabilityRows('Audio formats', caps.audio);
+    html += capabilityRows('Output paths — detected only', caps.outputs);
+    html += '<section class="settings-card"><h3>Streaming and Web Audio</h3><div class="about-list">' +
+      '<div><span>Media Source Extensions</span><strong>' + (caps.mediaSource.available ? 'available' : 'not available') + '</strong></div>' +
+      '<div><span>MSE H.264</span><strong>' + esc(caps.mediaSource.mp4) + '</strong></div>' +
+      '<div><span>MSE VP9</span><strong>' + esc(caps.mediaSource.webm) + '</strong></div>' +
+      '<div><span>Web Audio</span><strong>' + (caps.webAudio.available ? 'available' : 'not available') + '</strong></div>' +
+      '<div><span>Audio context rate</span><strong>' + esc(caps.webAudio.sampleRate) + '</strong></div>' +
+      '<div><span>Channel routing API</span><strong>' + (caps.webAudio.channelControl ? 'available' : 'not exposed') + '</strong></div>' +
+      '</div><p class="setting-note">Native HLS/DASH, 24-bit files, Dolby, Atmos, DTS:X, Bluetooth and eARC are never shown as working unless the TV engine reports them. No value here is fabricated.</p></section>';
+    return html + '</div>';
+  }
+
+  function audio(model, supported) {
+    var tab = global.LumaBrowserModel.currentTab();
+    var source = tab && tab.url ? tab.url : '';
+    var html = '<div class="screen-head"><h2>Luma Audio Player</h2>' +
+      button('audio-close', 'Back to page', 'ui-button subtle') + '</div>';
+    if (!supported || !source) {
+      return html + emptyState('The audio player opens direct audio files only. Open an .mp3, .m4a, .aac, .flac, .wav, .ogg or .opus address first. Audio inside a website stays with that website.');
+    }
+    html += '<div class="video-shell audio-shell"><audio id="luma-audio" preload="metadata" src="' + esc(source) + '"></audio>';
+    html += '<div id="audio-error" class="video-error"></div>';
+    html += '<div class="video-controls">' +
+      '<div class="video-progress"><input id="audio-seek" type="range" min="0" max="100" value="0" aria-label="Seek audio"' + focusAttrs(' data-action="audio-seek"') + ' />' +
+      '<span id="audio-time">0:00 / 0:00</span></div>' +
+      '<div class="video-buttons">' +
+      button('audio-play', 'Play', 'ui-button primary') +
+      button('audio-pause', 'Pause', 'ui-button') +
+      '<label class="video-volume"><span>Volume</span><input id="audio-volume" type="range" min="0" max="100" value="' + esc(model.settings.videoVolume) + '"' + focusAttrs(' data-action="audio-volume"') + ' /></label>' +
+      button('audio-back10', '−10s', 'ui-button subtle') +
+      button('audio-forward10', '+10s', 'ui-button subtle') +
+      '</div></div></div>';
+    html += '<div id="audio-diag" class="media-diag">Local status: ready</div>';
+    html += '<p class="screen-note">Bit depth, surround output and Hi-Res certification are not exposed by the web player. See Media Capabilities for real detection.</p>';
+    return html + '</div>';
+  }
+
   function video(model, supported) {
     var tab = global.LumaBrowserModel.currentTab();
     var source = tab && tab.url ? tab.url : '';
@@ -382,7 +495,7 @@
     html += '<div id="video-buffering" class="video-buffering">Buffering…</div>';
     html += '<div id="video-error" class="video-error"></div>';
     html += '<div class="video-controls">' +
-      '<div class="video-progress"><input id="video-seek" type="range" min="0" max="100" value="0" aria-label="Seek"' + focusAttrs() + ' />' +
+      '<div class="video-progress"><input id="video-seek" type="range" min="0" max="100" value="0" aria-label="Seek"' + focusAttrs(' data-action="video-seek"') + ' />' +
       '<span id="video-time">0:00 / 0:00</span></div>' +
       '<div class="video-buttons">' +
       button('video-play', 'Play', 'ui-button primary') +
@@ -391,9 +504,13 @@
       button('video-forward10', '+10s', 'ui-button subtle') +
       '<label class="video-volume"><span>Volume</span><input id="video-volume" type="range" min="0" max="100" value="' + esc(model.settings.videoVolume) + '"' + focusAttrs(' data-action="video-volume"') + ' /></label>' +
       button('video-fullscreen', 'Fullscreen', 'ui-button subtle') +
-      '<span class="video-disabled" title="No subtitle track is provided by this app">Subtitles unavailable</span>' +
       '</div></div></div>';
-    html += '<p class="screen-note">This player opens direct video files only. It cannot control video inside a website frame.</p>';
+    html += '<div id="video-diag" class="media-diag">Local status: waiting for playback</div>';
+    html += '<div class="subtitle-row"><label class="video-subtitle"><span>Optional WebVTT subtitle URL</span>' +
+      '<input id="video-subtitle-url" class="subtitle-input" type="text" placeholder="https://…/captions.vtt"' + focusAttrs() + ' /></label>' +
+      button('video-subtitle-load', 'Load subtitles', 'ui-button small subtle') + '</div>';
+    html += '<span id="video-tracks" class="video-disabled">Audio tracks: not exposed by this engine</span>';
+    html += '<p class="screen-note">This player opens direct video files only. It cannot control video inside a website frame. Subtitles load only when the subtitle server permits this app to fetch the WebVTT file.</p>';
     return html + '</div>';
   }
 
@@ -414,7 +531,10 @@
     history: history,
     tabManager: tabManager,
     settings: settings,
+    searchResults: searchResults,
+    capabilities: capabilities,
     video: video,
+    audio: audio,
     diagnosticShell: diagnosticShell,
     emptyState: emptyState
   };

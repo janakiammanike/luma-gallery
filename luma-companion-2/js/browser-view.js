@@ -57,7 +57,15 @@
     frame.id = 'frame_' + tabId;
     frame.className = 'browser-frame';
     frame.title = 'Luma Browser page';
-    frame.setAttribute('sandbox', 'allow-scripts allow-forms');
+    /*
+     * allow-popups is kept for ordinary pages that open helper windows. On this
+     * webOS build it did not make search-result target="_blank" links work, so
+     * search terms use the local results screen instead. Popups still inherit
+     * this sandbox and blocked hosts are refused before any frame is created.
+     */
+    frame.setAttribute('sandbox', 'allow-scripts allow-forms allow-popups');
+    frame.setAttribute('allow', 'fullscreen; autoplay');
+    frame.setAttribute('allowfullscreen', '');
     frame.setAttribute('data-tab', tabId);
     frame.src = BLANK;
     frame.addEventListener('load', function () {

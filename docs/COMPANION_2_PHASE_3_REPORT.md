@@ -23,9 +23,9 @@ module was removed from `settings.gradle.kts` and deleted.
 | Area | Files | Summary |
 |---|---|---|
 | TV browser module | `luma-companion-2/js/browser-view.js` | Absolute http(s) URL validation, credential/control-character rejection, sandboxed iframe, `browser.close` reset, no page-content reads. |
-| TV UI | `luma-companion-2/index.html`, `css/styles.css`, `css/browser.css`, `js/app.js` | Initially a browser card; now a full premium TV browser shell with tab bar, address bar, side menu, Home, Bookmarks, History, Tab Manager, Settings and Video. The Phase 1/2 dashboard is preserved as the Companion screen. Frames close on app hide. |
-| TV browser modules | `js/browser-model.js`, `js/browser-view.js`, `js/browser-components.js`, `js/browser-controller.js` | Multi-tab state/persistence, sandboxed per-tab iframe renderer, render-only components, and event/focus/video/command controller. Replaces the removed single-frame snapshot/subscribe APIs. |
-| TV remote client | `luma-companion-2/js/remote-session.js` | `browser.open` and `browser.close` allow-listed; `app.focus` stays reserved. Later prepared extra browser/video command states on the TV side for a future Host-mode UI. ACK handler accepts `batch_id` and `partial` for the later telemetry phase, but telemetry is inactive. |
+| TV UI | `luma-companion-2/index.html`, `css/styles.css`, `css/browser.css`, `js/app.js` | Initially a browser card; now a full premium TV browser shell with tab bar, address bar, side menu, Home, Bookmarks, History, Tab Manager, Settings, Video, Audio and Media Capabilities. The Phase 1/2 dashboard is preserved as the Companion screen. Frames close on app hide. |
+| TV browser modules | `js/browser-model.js`, `js/browser-view.js`, `js/browser-components.js`, `js/browser-controller.js`, `js/media-capabilities.js` | Multi-tab state/persistence, sandboxed per-tab iframe renderer, render-only components, event/focus/video/audio/command controller, and read-only runtime capability detection. Replaces the removed single-frame snapshot/subscribe APIs. |
+| TV remote client | `luma-companion-2/js/remote-session.js` | `browser.open` and `browser.close` allow-listed; `app.focus` stays reserved. Later prepared extra browser/video/audio command states on the TV side for a future Host-mode UI. ACK handler accepts `batch_id` and `partial` for the later telemetry phase, but telemetry is inactive. |
 | Android host | `tvremote2/src/main/java/com/luma/tvremote2/host/` | `CompanionServer.kt` and `Envelope.kt` moved into the app with the new allow-list and telemetry-ready ACK parsing. |
 | Android UI | `tvremote2/src/main/java/com/luma/tvremote2/feature/host/HostScreen.kt`, `host/HostViewModel.kt` | Compose Host mode with Start/Stop, Approve/Reject, Refresh TV, Open Page, Close Page and activity log. Server stops on pause or dispose. |
 | Navigation | `Routes.kt`, `RemoteApp.kt`, `ConnectScreen.kt`, `MoreScreen.kt` | New `host` destination, direct entry from Connect, entry in More menu. |
@@ -47,15 +47,16 @@ TV browser-view -> iframe reset to about:blank -> ACK
 Rules:
 
 - accepted URL: absolute `http:` or `https:`, 1–2048 characters, host present, no credentials, no control characters or surrounding whitespace,
-- iframe sandbox: `allow-scripts allow-forms` only; no same-origin access, no top-level navigation, no popups,
+- iframe sandbox: `allow-scripts allow-forms allow-popups`; no same-origin access and no top-level navigation, while helper popups remain sandboxed; search results are local Luma actions, not framed links,
 - the app never reads the framed document, cookies, storage or history,
 - no visited URL is stored, logged or sent as telemetry,
 - hiding the TV app or disconnecting closes the frame,
 - sites that refuse framing or require DRM are not promised to work,
 - the TV additionally prepares `browser.back`, `browser.forward`, `browser.reload`,
   `browser.home`, `browser.new_tab`, `browser.close_tab`, `browser.next_tab`,
-  `browser.previous_tab`, `video.play`, `video.pause` and `video.seek`. These are TV-side states
-  for a future Host-mode UI; the phone app currently exposes only the three commands named above.
+  `browser.previous_tab`, `video.play`, `video.pause`, `video.seek`, `audio.play`, `audio.pause` and
+  `audio.seek`. These are TV-side states for a future Host-mode UI; the phone app currently exposes
+  only the three commands named above.
 
 ## Safety decisions
 
@@ -69,12 +70,15 @@ Rules:
 
 - Original Phase 3: contract 11/11, storage 8/8, 35 referenced IDs with 0 missing, 13 focusable
   elements, remote stub 20/20 and `.\gradlew :tvremote2:assembleDebug --no-daemon` successful.
-- Current full browser shell: `npm run check` pass; DOM/metadata pass with 47 referenced IDs,
-  0 missing and controller wiring verified; `browser-view` 38/38; `browser-model` 48/48;
-  `browser-components` 61/61; `browser-controller` 38/38; remote session 26/26.
+- Current full browser shell with media and local-search additions: `npm run check` pass;
+  DOM/metadata pass with 56 referenced IDs, 0 missing and controller wiring verified;
+  `browser-view` 40/40; `browser-model` 87/87; `browser-components` 82/82;
+  `browser-controller` 60/60; remote session 29/29.
 - `npm run package`: successful. The regenerated IPK is at
   `luma-companion-2/ipk/com.luma.companion2_0.1.0_all.ipk`.
-- The regenerated IPK has **not** been installed or launched; no device capture is claimed.
+- This exact IPK was installed and launched on `lumatv`. Live CDP evidence includes the browser
+  shell, honest Media Capabilities, a real local-result click into Wikipedia and a blocked YouTube
+  result that shows a notice without replacing the app. Details are in `docs/BROWSER_UI_TEST_RESULTS.md`.
 - No ADB automation was used in either phase.
 
 Historical evidence is in `docs/PHASE_3_BROWSER_TEST_RESULTS.md`; current evidence is in
