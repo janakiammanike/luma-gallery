@@ -52,6 +52,7 @@ Repository additions:
 - `webos-chromium-addon/source/package/run.sh` (copy of the Phase 1 additive launcher)
 - `webos-chromium-addon/source/package/ext/luma/**` (all 44 Luma files, now version-controlled)
 - `tools/luma-media-smoke.js`
+- `tools/luma-worker-smoke.js`
 - `docs/luma-addon/08-phase3-audit.md`
 - `docs/luma-addon/09-phase3-final-report.md`
 
@@ -168,19 +169,24 @@ CPU/GPU/memory, real frame drops, real processing latency and A/V offset were **
 | Manifest parse | OK, `0.3.0`, permissions `storage,tabs` |
 | Forbidden API scan | 0 hits (`connectNative`, `sendNativeMessage`, nativeMessaging, `chrome.debugger`, `chrome.scripting`, `host_permissions`, `PalmSystem`, `webOS.service.request`, `luna-send`, `Input.*`) |
 | `node tools/luma-media-smoke.js` | 16/16 pass |
+| `node tools/luma-worker-smoke.js` | 4/4 pass; `media-inspect-active` skips the extension tab and routes to the web tab |
 | IPK repack | 44 Luma files added, originals unchanged |
 | IPK install on `lumatv` | Success |
 | Default launch | `--load-extension=.../ext/tvtools` only |
 | Opt-in launch | `--load-extension=.../ext/tvtools,.../ext/luma`; manifest `0.3.0` |
 | Cinema files on TV | `cinema.html`, `cinema.js`, `content/media-probe.js`, `media/engine.js` present |
 | Luma errors in browser log | none |
+| Opt-in W3C video launch | cmdline contains `tvtools,luma` and `https://media.w3.org/2010/05/sintel/trailer.mp4` |
+| W3C source from TV | `HTTP/2 200`, `content-type: video/mp4`, 4,372,373 bytes |
+| Active media connection | Chrome-owned TCP `104.18.22.19:443` ESTABLISHED (uid `6175`) |
+| Memory guard | no kill lines during the test |
 | Final IPK SHA256 | `d98abe76ddf69cf07300ebdfda1baa6a854b8b63bfea703f6e92e48e80b0a287` |
 
 ## 16. Actual TV testing status
 
-Verified automatically: package install, opt-in loading, version/permissions, file presence and absence of extension errors.
+Verified automatically: package install, opt-in loading, version/permissions, file presence, absence of extension errors, opt-in launch with a working lawful MP4, HTTP 200 source check, and an active Chrome-owned HTTPS connection to the media host. Headless tests cover media modules and the worker inspect route.
 
-Not yet manually verified on TV: Luma Cinema panel button interactions, real profile processing, real codec matrix streams, Bluetooth values and performance metrics. Phone Host-to-TV remote handshake also remains pending from Phase 2.
+Not verified without CDP/ADB automation: Luma Cinema panel button interactions, real profile processing, real codec matrix streams, Bluetooth values and performance metrics. Phone Host-to-TV remote handshake also remains pending from Phase 2.
 
 Manual checks available to the user:
 
