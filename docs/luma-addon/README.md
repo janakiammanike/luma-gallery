@@ -1,7 +1,7 @@
 # Luma Features Layer — inspection and architecture package
 
 **Date:** 2026-11-25  
-**Status:** Report reviewed. **A1 approved and applied only.** A separate, opt-in Luma execution path and new `ext/luma/**` files were added. No build, install, TV test, commit or push has been performed.
+**Status:** A1 is applied and verified. Phase 2 is implemented as final `0.2.2`, repackaged locally, installed and runtime-verified on `lumatv`, including successful HTML5 video playback. The phone Host-to-TV remote handshake is still a manual pending test.
 
 This package answers your request without changing the working WebOS-Chromium browser.
 
@@ -21,6 +21,8 @@ This package answers your request without changing the working WebOS-Chromium br
 | 4 | [03-architecture.md](03-architecture.md) | Proposed separate Luma Features Layer and its boundaries. |
 | 5 | [04-safe-implementation-plan.md](04-safe-implementation-plan.md) | What will be built, in what order, and how it will be tested. |
 | 5 | [05-change-requests.md](05-change-requests.md) | Which ideas need core/host or existing-file changes and must wait. |
+| 6 | [06-phase2-integration-audit.md](06-phase2-integration-audit.md) | Phase 1 re-verification, supported APIs, 14-feature matrix, architecture and security design. |
+| 7 | [07-phase2-implementation.md](07-phase2-implementation.md) | What Phase 2 code changed, what was verified, and what still needs approval. |
 
 ## Hard scope rules recorded in these documents
 
@@ -28,7 +30,7 @@ This package answers your request without changing the working WebOS-Chromium br
 2. Add functionality only as new files/modules inside the shipped extension packaging path.
 3. A feature needing Chromium core, NDL/GPU, native host registration, app icon/title or existing-file changes is reported and waits for explicit approval.
 4. No telemetry is part of the Luma Features Layer. It is not added to any permission, message, storage, UI or handshake.
-5. A2–A4 and A5 are not approved. B1–B9 were preserved-only; no destructive changes were made.
+5. A1 is applied. The Phase 2 implementation approval covers only the additive Host/extension remote foundation; CDP input, fullscreen, native host, Luna and engine changes are still not approved. B1–B9 remain preserved-only.
 6. No build, install, device test, commit or push has been performed.
 
 ## Applied decision

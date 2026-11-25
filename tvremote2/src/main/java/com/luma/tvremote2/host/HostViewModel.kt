@@ -14,7 +14,8 @@ data class HostUiState(
     val portInput: String = "8787",
     val browserUrlInput: String = "https://example.com",
     val activityLines: List<String> = listOf("host ready"),
-    val lastReject: String = "none"
+    val lastReject: String = "none",
+    val producer: String = ""
 ) {
     val running: Boolean get() = serverState != "Stopped" && serverState != "Start failed"
     val canApprove: Boolean get() = running && pendingId != null
@@ -80,7 +81,8 @@ class HostViewModel : ViewModel(), CompanionHostEvents {
             serverState = state,
             peer = if (cleared) "No peer" else base.peer,
             pendingId = if (cleared) null else base.pendingId,
-            approvedId = if (cleared) null else base.approvedId
+            approvedId = if (cleared) null else base.approvedId,
+            producer = if (cleared) "" else base.producer
         )
     }
 
@@ -88,16 +90,18 @@ class HostViewModel : ViewModel(), CompanionHostEvents {
         _ui.value = _ui.value.copy(
             pendingId = sessionId,
             approvedId = null,
-            peer = "Pending · $producer $appVersion · ${sessionId.take(8)}"
+            peer = "Pending · $producer $appVersion · ${sessionId.take(8)}",
+            producer = producer
         )
         appendActivity("hello received · ${sessionId.take(8)}")
     }
 
     override fun onPeerConnected(sessionId: String) {
+        val producer = _ui.value.producer
         _ui.value = _ui.value.copy(
             pendingId = null,
             approvedId = sessionId,
-            peer = "Approved · ${sessionId.take(8)}"
+            peer = "Approved · $producer · ${sessionId.take(8)}"
         )
         appendActivity("capability approved · ${sessionId.take(8)}")
     }
@@ -106,7 +110,8 @@ class HostViewModel : ViewModel(), CompanionHostEvents {
         _ui.value = _ui.value.copy(
             pendingId = null,
             approvedId = null,
-            peer = "No peer"
+            peer = "No peer",
+            producer = ""
         )
     }
 

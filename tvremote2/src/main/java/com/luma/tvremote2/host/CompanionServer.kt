@@ -20,7 +20,31 @@ private const val MAX_INVALID_BEFORE_CLOSE = 5
 private const val RATE_WINDOW_MS = 10000
 private const val MAX_MESSAGES_PER_WINDOW = 20
 
-private val ALLOWED_ACTIONS = setOf("diagnostics.refresh", "browser.open", "browser.close")
+private const val COMPANION_PRODUCER = "com.luma.companion2"
+private const val CHROMIUM_PRODUCER = "luma.chromium"
+
+private val ALLOWED_PRODUCERS = setOf(COMPANION_PRODUCER, CHROMIUM_PRODUCER)
+private val COMPANION_ACTIONS = setOf("diagnostics.refresh", "browser.open", "browser.close")
+private val CHROMIUM_ACTIONS = setOf(
+    "diagnostics.refresh",
+    "browser.open",
+    "browser.close",
+    "navigation.back",
+    "navigation.forward",
+    "navigation.reload",
+    "navigation.close",
+    "navigation.activate",
+    "navigation.next",
+    "navigation.previous",
+    "navigation.open",
+    "media.play",
+    "media.pause",
+    "media.toggle",
+    "media.seek",
+    "media.volume",
+    "media.mute",
+    "media.probe"
+)
 private val RESERVED_ACTIONS = setOf("app.focus")
 private val ALLOWED_EVENTS = setOf("lifecycle.visibility", "diagnostics.snapshot", "connection_state")
 
@@ -52,6 +76,9 @@ class CompanionServer(private val port: Int, private val events: CompanionHostEv
     private var client: ClientConnection? = null
     private var pendingId: String? = null
     private var connectedId: String? = null
+    private var pendingProducer: String? = null
+    private var peerProducer: String? = null
+    private var peerCapabilities: Set<String> = emptySet()
 
     private val sendLock = Any()
     private val messageTimes = mutableListOf<Long>()
@@ -101,24 +128,35 @@ class CompanionServer(private val port: Int, private val events: CompanionHostEv
         clientThread = null
         pendingId = null
         connectedId = null
+        pendingProducer = null
+        peerProducer = null
+        peerCapabilities = emptySet()
         events.onServerState("Stopped")
     }
 
     fun approve() {
         val session = pendingId ?: return
+        val producer = pendingProducer ?: COMPANION_PRODUCER
+        val features = capabilityFeatures(producer)
+
         val payload = JSONObject()
         payload.put("accepted_version", CONTRACT_VERSION)
-        payload.put("supported_types", JSONArray(listOf("command", "event", "ack", "telemetry_batch")))
-        payload.put(
-            "features",
-            JSONArray(listOf("diagnostics.refresh", "browser.open", "browser.close"))
-        )
+        val supportedTypes = if (producer == CHROMIUM_PRODUCER) {
+            listOf("command", "event", "ack", "ping", "pong")
+        } else {
+            listOf("command", "event", "ack", "telemetry_batch")
+        }
+        payload.put("supported_types", JSONArray(supportedTypes))
+        payload.put("features", JSONArray(features))
         payload.put("telemetry_enabled", false)
         send("capability", newId("cap"), payload)
+
         connectedId = session
+        peerProducer = producer
         pendingId = null
+        pendingProducer = null
         events.onPeerConnected(session)
-        events.onActivity("capability approved")
+        events.onActivity("capability approved · ${features.size} action(s)")
     }
 
     fun reject() {
@@ -131,51 +169,46 @@ class CompanionServer(private val port: Int, private val events: CompanionHostEv
         events.onActivity("peer rejected")
     }
 
-    fun sendDiagnosticsRefresh() {
+    /** Sends an allow-listed action to the currently approved peer. */
+    fun sendCommand(action: String, args: JSONObject, timeoutMs: Long = 5000) {
         if (connectedId == null || pendingId != null) {
             events.onReject("no_approved_peer")
+            return
+        }
+        val producer = peerProducer ?: COMPANION_PRODUCER
+        if (action !in allowedActions(producer) || action !in peerCapabilities) {
+            events.onReject("unsupported_action")
             return
         }
         val payload = JSONObject()
-        payload.put("action", "diagnostics.refresh")
+        payload.put("action", action)
         payload.put("request_id", newId("req"))
-        payload.put("args", JSONObject())
-        payload.put("timeout_ms", 5000)
+        payload.put("args", args)
+        payload.put("timeout_ms", timeoutMs)
         send("command", newId("cmd"), payload)
-        events.onActivity("command sent · diagnostics.refresh")
+        events.onActivity("command sent · $action")
     }
 
+    fun sendDiagnosticsRefresh() = sendCommand("diagnostics.refresh", JSONObject())
+
     fun sendBrowserOpen(rawUrl: String) {
-        if (connectedId == null || pendingId != null) {
-            events.onReject("no_approved_peer")
-            return
-        }
         val checked = validateBrowserUrl(rawUrl)
         if (!checked.ok) {
             events.onReject(checked.reason)
             return
         }
-        val payload = JSONObject()
-        payload.put("action", "browser.open")
-        payload.put("request_id", newId("req"))
-        payload.put("args", JSONObject().put("url", checked.url))
-        payload.put("timeout_ms", 5000)
-        send("command", newId("cmd"), payload)
-        events.onActivity("command sent · browser.open")
+        sendCommand("browser.open", JSONObject().put("url", checked.url))
     }
 
-    fun sendBrowserClose() {
-        if (connectedId == null || pendingId != null) {
-            events.onReject("no_approved_peer")
-            return
-        }
-        val payload = JSONObject()
-        payload.put("action", "browser.close")
-        payload.put("request_id", newId("req"))
-        payload.put("args", JSONObject())
-        payload.put("timeout_ms", 5000)
-        send("command", newId("cmd"), payload)
-        events.onActivity("command sent · browser.close")
+    fun sendBrowserClose() = sendCommand("browser.close", JSONObject())
+
+    private fun allowedActions(producer: String): Set<String> {
+        return if (producer == CHROMIUM_PRODUCER) CHROMIUM_ACTIONS else COMPANION_ACTIONS
+    }
+
+    private fun capabilityFeatures(producer: String): List<String> {
+        val allowed = allowedActions(producer)
+        return allowed.toList().filter { it in peerCapabilities }
     }
 
     private fun validateBrowserUrl(raw: String): BrowserUrlValidation {
@@ -219,6 +252,9 @@ class CompanionServer(private val port: Int, private val events: CompanionHostEv
                 client = connection
                 pendingId = null
                 connectedId = null
+                pendingProducer = null
+                peerProducer = null
+                peerCapabilities = emptySet()
                 invalidCount = 0
                 messageTimes.clear()
                 events.onActivity("peer socket opened")
@@ -379,6 +415,9 @@ class CompanionServer(private val port: Int, private val events: CompanionHostEv
                 client = null
                 pendingId = null
                 connectedId = null
+                pendingProducer = null
+                peerProducer = null
+                peerCapabilities = emptySet()
                 events.onPeerClosed()
             }
         }
@@ -400,6 +439,8 @@ class CompanionServer(private val port: Int, private val events: CompanionHostEv
             "command" -> handleCommand(message.payload)
             "event" -> handleEvent(message.payload)
             "ack" -> handleAck(message.payload)
+            "ping" -> handlePing(message.payload)
+            "pong" -> events.onActivity("pong received")
             "telemetry_batch" -> sendAck(message.id, "rejected", "telemetry_disabled")
             else -> rejectUnexpected("unsupported_type")
         }
@@ -411,8 +452,15 @@ class CompanionServer(private val port: Int, private val events: CompanionHostEv
         val sessionId = payload.optString("session_id", "")
         val capabilities = payload.opt("capabilities")
 
-        if (producer != "com.luma.companion2" || !validString(appVersion, 32) ||
-            !validString(sessionId, MAX_ID_LENGTH) || capabilities !is JSONArray
+        val capabilityList = if (capabilities is JSONArray) {
+            (0 until capabilities.length()).map { capabilities.optString(it, "") }
+        } else {
+            emptyList()
+        }
+
+        if (producer !in ALLOWED_PRODUCERS || !validString(appVersion, 32) ||
+            !validString(sessionId, MAX_ID_LENGTH) || capabilityList.isEmpty() ||
+            capabilityList.any { !validString(it, 128) }
         ) {
             rejectUnexpected("invalid_hello")
             return
@@ -423,8 +471,21 @@ class CompanionServer(private val port: Int, private val events: CompanionHostEv
         }
 
         pendingId = sessionId
+        pendingProducer = producer
+        peerCapabilities = capabilityList.toSet()
         events.onPeerPending(sessionId, producer, appVersion)
         events.onActivity("hello received")
+    }
+
+    private fun handlePing(payload: JSONObject) {
+        if (pendingProducer != CHROMIUM_PRODUCER && peerProducer != CHROMIUM_PRODUCER) {
+            rejectUnexpected("ping_not_supported")
+            return
+        }
+        val response = JSONObject()
+        val sent = payload.opt("sent_ms")
+        response.put("echo_ms", if (sent is Number) sent.toLong() else System.currentTimeMillis())
+        send("pong", newId("pong"), response)
     }
 
     private fun handleCommand(payload: JSONObject) {
@@ -447,7 +508,8 @@ class CompanionServer(private val port: Int, private val events: CompanionHostEv
             return
         }
 
-        if (action !in ALLOWED_ACTIONS) {
+        val producer = peerProducer ?: COMPANION_PRODUCER
+        if (action !in allowedActions(producer) || action !in peerCapabilities) {
             if (action in RESERVED_ACTIONS) {
                 sendAck(requestId, "rejected", "action_disabled")
                 rejectUnexpected("action_disabled")

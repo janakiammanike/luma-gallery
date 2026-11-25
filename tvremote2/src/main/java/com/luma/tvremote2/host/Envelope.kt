@@ -13,7 +13,9 @@ val KNOWN_TYPES = setOf(
     "command",
     "event",
     "ack",
-    "telemetry_batch"
+    "telemetry_batch",
+    "ping",
+    "pong"
 )
 
 data class Envelope(
