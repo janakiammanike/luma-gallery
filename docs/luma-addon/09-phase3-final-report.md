@@ -1,7 +1,7 @@
 # Phase 3 — Final consolidated implementation report
 
 **Date:** 2026-11-25  
-**Version:** Luma Features `0.3.0`  
+**Version:** Luma Features `0.3.1`  
 **Status:** Development closed. Final package built, installed on `lumatv` and runtime-verified. Luma Cinema panel interactions and phone-to-TV remote handshake remain manual user checks.
 
 ---
@@ -58,9 +58,9 @@ Repository additions:
 
 ## 3. Files modified
 
-- `manifest.json` — version `0.3.0`, description updated, `media/detector.js` and `content/media-probe.js` added to content scripts. Permissions remain `storage,tabs`.
+- `manifest.json` — version `0.3.1`, description updated, `media/detector.js` and `content/media-probe.js` added to content scripts. Permissions remain `storage,tabs`.
 - `worker.js` — added `mediaTab()` and the `media-inspect-active` message case. The Phase 2 remote dispatcher is unchanged.
-- `home.html` — added a **Cinema** link.
+- `home.html`, `popup.html`, `options.html` — added a visible **Luma Cinema** link. The popup button is the primary shortcut; Settings has a direct **Open Luma Cinema** button. Version bumped to `0.3.1` so the installed extension reloads the changed pages.
 
 No original Chromium file was removed or renamed.
 
@@ -70,7 +70,7 @@ The final IPK was rebuilt from the official v1.1.1 package. Verification printed
 
 `UNCHANGED_ORIGINALS=chrome,run,manifest.json,appinfo.json,libnss3.so,resources.pak`
 
-- Package/control version remains `1.1.1`; only the extension manifest is `0.3.0`.
+- Package/control version remains `1.1.1`; only the extension manifest is `0.3.1`.
 - `run.sh` SHA256 remains `3a77d0d97a0f4736a2294bcd6bad1b6d203a4763aa1b13252d75a000f9ae5bdc`.
 - No cloud build was used.
 - TV Tools and all browser binaries/libraries are unchanged.
@@ -166,21 +166,21 @@ CPU/GPU/memory, real frame drops, real processing latency and A/V offset were **
 | Test | Result |
 |---|---|
 | `node --check` on extension JS | 29 files, 0 failures |
-| Manifest parse | OK, `0.3.0`, permissions `storage,tabs` |
+| Manifest parse | OK, `0.3.1`, permissions `storage,tabs` |
 | Forbidden API scan | 0 hits (`connectNative`, `sendNativeMessage`, nativeMessaging, `chrome.debugger`, `chrome.scripting`, `host_permissions`, `PalmSystem`, `webOS.service.request`, `luna-send`, `Input.*`) |
 | `node tools/luma-media-smoke.js` | 16/16 pass |
 | `node tools/luma-worker-smoke.js` | 4/4 pass; `media-inspect-active` skips the extension tab and routes to the web tab |
 | IPK repack | 44 Luma files added, originals unchanged |
 | IPK install on `lumatv` | Success |
 | Default launch | `--load-extension=.../ext/tvtools` only |
-| Opt-in launch | `--load-extension=.../ext/tvtools,.../ext/luma`; manifest `0.3.0` |
+| Opt-in launch | `--load-extension=.../ext/tvtools,.../ext/luma`; manifest `0.3.1` |
 | Cinema files on TV | `cinema.html`, `cinema.js`, `content/media-probe.js`, `media/engine.js` present |
 | Luma errors in browser log | none |
 | Opt-in W3C video launch | cmdline contains `tvtools,luma` and `https://media.w3.org/2010/05/sintel/trailer.mp4` |
 | W3C source from TV | `HTTP/2 200`, `content-type: video/mp4`, 4,372,373 bytes |
 | Active media connection | Chrome-owned TCP `104.18.22.19:443` ESTABLISHED (uid `6175`) |
 | Memory guard | no kill lines during the test |
-| Final IPK SHA256 | `d98abe76ddf69cf07300ebdfda1baa6a854b8b63bfea703f6e92e48e80b0a287` |
+| Final IPK SHA256 | `0f66a31db4049126c2f6c0c4380d0bfc0fa88295e58f2fc0ef42137045a03c8b` |
 
 ## 16. Actual TV testing status
 

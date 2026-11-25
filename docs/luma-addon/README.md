@@ -1,7 +1,7 @@
 # Luma Features Layer — inspection and architecture package
 
 **Date:** 2026-11-25  
-**Status:** A1, Phase 2 and Phase 3 are complete. Luma Features `0.3.0` is version-controlled in `webos-chromium-addon/`, repackaged locally, installed and runtime-verified on `lumatv`. Phase 3 adds the Luma Cinema media engine while preserving Chromium. The phone Host-to-TV remote handshake and full Cinema UI interaction remain manual user checks.
+**Status:** A1, Phase 2 and Phase 3 are complete. Luma Features `0.3.1` is version-controlled in `webos-chromium-addon/`, repackaged locally, installed and runtime-verified on `lumatv`. Phase 3 adds the Luma Cinema media engine while preserving Chromium. The phone Host-to-TV remote handshake and full Cinema UI interaction remain manual user checks.
 
 This package answers your request without changing the working WebOS-Chromium browser.
 

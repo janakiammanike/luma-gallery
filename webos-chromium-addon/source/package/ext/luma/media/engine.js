@@ -46,7 +46,7 @@
   }
 
   root.LumaMediaEngine = {
-    version: "0.3.0",
+    version: "0.3.1",
     ensure: ensure,
     snapshot: snapshot,
     diagnostics: function () { return root.LumaMediaDiagnostics.run(); },

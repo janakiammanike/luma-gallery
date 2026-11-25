@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Luma Features",
   "short_name": "Luma",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Luma Home, quick access, local diagnostics, page-level media controls, opt-in phone remote and the Luma Cinema media engine. No telemetry.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4AwsfrabYhHJlu56AtgeobTDuMp01b5jd5RvIe9CEvj+Sl5IuATpTF77mLirqbuFHTzwS+60PbqhuqsiZxyD6PBN5zfDMurLO/uTCabvYbOEliRftSF4aKhv2UsPvc+Tq7E2wXrl7u+PTTvsPrgDZB59oPiTbuOB5un9NjHHDNIOL9GvbL6F4zMaF2P2uQL2d3AaGgnWI5bbzw/uEV/i2qq6mJVkZ6ajSrOBPRWUaV71xpHJ1UNMcpndPRS2hwFt5F8v0AkXG+gGqNpF/sKdQUQX2GXKEUriOh/jOT4kRiLijfgihV9KNPwRS3NFNj8885Utq94Utg8hwfiTo5S5gQIDAQAB",
   "icons": {

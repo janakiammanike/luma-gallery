@@ -3,7 +3,7 @@
 // secret is stored here: approval always happens on the phone.
 (function (root) {
   var PRODUCER = "luma.chromium";
-  var APP_VERSION = "0.2.2";
+  var APP_VERSION = "0.3.1";
 
   var CAPABILITIES = [
     "diagnostics.refresh",
